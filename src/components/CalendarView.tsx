@@ -12,7 +12,7 @@ interface CalendarViewProps {
   refreshKey: number;
 }
 
-const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS_OF_WEEK = ["S", "M", "T", "W", "T", "F", "S"];
 
 const TIME_LABELS: Record<string, string> = {
   morning: "Morning",
@@ -85,29 +85,6 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
     return schedule.filter((s) => s.day_of_week === dow);
   }
 
-  // Get unique peptide names for color assignment
-  const allPeptideNames = new Set<string>();
-  for (const inj of injections) {
-    allPeptideNames.add(inj.peptides?.name || "Unknown");
-  }
-  for (const s of schedule) {
-    allPeptideNames.add(s.peptides?.name || "Unknown");
-  }
-  const peptideNames = Array.from(allPeptideNames);
-
-  const DOT_COLORS = [
-    "bg-primary",
-    "bg-success",
-    "bg-warning",
-    "bg-danger",
-    "bg-primary-light",
-  ];
-
-  function getPeptideColor(name: string) {
-    const idx = peptideNames.indexOf(name);
-    return DOT_COLORS[idx % DOT_COLORS.length];
-  }
-
   const { firstDay, daysInMonth } = getMonthDays(year, month);
   const todayKey = toDateKey(today);
 
@@ -155,13 +132,13 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
       <div className="flex items-center justify-between">
         <button
           onClick={goToPrevMonth}
-          className="p-2 rounded-lg hover:bg-surface-hover transition-colors"
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-hover transition-colors"
           aria-label="Previous month"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -174,19 +151,19 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
         </button>
         <button
           onClick={goToToday}
-          className="text-lg font-semibold hover:text-primary transition-colors"
+          className="text-[17px] font-semibold hover:text-primary transition-colors"
         >
           {formatMonthYear(year, month)}
         </button>
         <button
           onClick={goToNextMonth}
-          className="p-2 rounded-lg hover:bg-surface-hover transition-colors"
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-hover transition-colors"
           aria-label="Next month"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -200,135 +177,95 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
       </div>
 
       {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 text-center text-xs font-medium text-muted">
-        {DAYS_OF_WEEK.map((d) => (
-          <div key={d} className="py-1">
+      <div className="grid grid-cols-7 text-center">
+        {DAYS_OF_WEEK.map((d, i) => (
+          <div key={i} className="text-xs font-medium text-muted py-1">
             {d}
           </div>
         ))}
       </div>
 
-      {/* Calendar grid */}
+      {/* Calendar grid - bubble style */}
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       ) : (
-        <div className="grid grid-cols-7 gap-px">
+        <div className="grid grid-cols-7 gap-y-1">
           {cells.map((day, i) => {
             if (day === null) {
-              return <div key={`empty-${i}`} className="aspect-square" />;
+              return <div key={`empty-${i}`} className="flex items-center justify-center h-11" />;
             }
             const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const dayInjections = injectionsByDate[dateKey] || [];
             const dayScheduled = getScheduledForDate(dateKey);
             const isToday = dateKey === todayKey;
             const isSelected = dateKey === selectedDate;
+            const hasLogged = dayInjections.length > 0;
+            const hasScheduled = dayScheduled.length > 0;
+            const isPast = dateKey < todayKey;
 
-            // Logged peptides (solid dots)
-            const loggedPeptides = Array.from(
-              new Set(
-                dayInjections.map((inj) => inj.peptides?.name || "Unknown")
-              )
-            );
-            // Scheduled but not yet logged (hollow dots)
-            const loggedNames = new Set(loggedPeptides);
-            const scheduledOnly = Array.from(
-              new Set(
-                dayScheduled
-                  .map((s) => s.peptides?.name || "Unknown")
-                  .filter((n) => !loggedNames.has(n))
-              )
-            );
-
-            const totalDots = loggedPeptides.length + scheduledOnly.length;
+            // Determine bubble shading
+            let bubbleClass = "";
+            if (isSelected) {
+              bubbleClass = "bg-primary text-white shadow-sm";
+            } else if (isToday) {
+              bubbleClass = hasLogged
+                ? "bg-success/15 text-success font-bold ring-2 ring-success/30"
+                : "bg-primary/12 text-primary font-bold ring-2 ring-primary/30";
+            } else if (hasLogged) {
+              bubbleClass = "bg-success/10 text-success font-semibold";
+            } else if (hasScheduled && !isPast) {
+              bubbleClass = "bg-primary/8 text-primary/70";
+            } else {
+              bubbleClass = "text-foreground hover:bg-surface-hover";
+            }
 
             return (
-              <button
-                key={dateKey}
-                onClick={() =>
-                  setSelectedDate(isSelected ? null : dateKey)
-                }
-                className={`aspect-square flex flex-col items-center justify-center rounded-lg transition-colors relative ${
-                  isSelected
-                    ? "bg-primary text-white"
-                    : isToday
-                      ? "bg-primary/10 text-primary font-bold"
-                      : "hover:bg-surface-hover"
-                }`}
-              >
-                <span className="text-sm">{day}</span>
-                {totalDots > 0 && (
-                  <div className="flex gap-0.5 mt-0.5">
-                    {loggedPeptides.slice(0, 3).map((name) => (
-                      <span
-                        key={name}
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isSelected ? "bg-white/70" : getPeptideColor(name)
-                        }`}
-                      />
-                    ))}
-                    {scheduledOnly
-                      .slice(0, Math.max(0, 3 - loggedPeptides.length))
-                      .map((name) => (
-                        <span
-                          key={`s-${name}`}
-                          className={`w-1.5 h-1.5 rounded-full border ${
-                            isSelected
-                              ? "border-white/60 bg-transparent"
-                              : "border-primary/40 bg-transparent"
-                          }`}
-                        />
-                      ))}
-                    {totalDots > 3 && (
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white/40" : "bg-muted"}`}
-                      />
-                    )}
-                  </div>
-                )}
-              </button>
+              <div key={dateKey} className="flex items-center justify-center">
+                <button
+                  onClick={() =>
+                    setSelectedDate(isSelected ? null : dateKey)
+                  }
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-all ${bubbleClass}`}
+                >
+                  {day}
+                </button>
+              </div>
             );
           })}
         </div>
       )}
 
-      {/* Legend */}
-      {peptideNames.length > 0 && (
-        <div className="flex flex-wrap gap-3 text-xs text-muted">
-          {peptideNames.map((name) => (
-            <div key={name} className="flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full ${getPeptideColor(name)}`}
-              />
-              {name}
-            </div>
-          ))}
-          {schedule.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full border-2 border-primary/40" />
-              Scheduled
-            </div>
-          )}
+      {/* Minimal legend */}
+      <div className="flex items-center justify-center gap-4 text-[11px] text-muted">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-success/20 border border-success/40" />
+          Logged
         </div>
-      )}
+        {schedule.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-primary/15 border border-primary/30" />
+            Scheduled
+          </div>
+        )}
+      </div>
 
       {/* Selected day detail */}
       {selectedDate && (
-        <div className="bg-surface border border-border rounded-xl p-4">
-          <h3 className="font-semibold mb-3">
+        <div className="bg-surface border border-border rounded-2xl p-4">
+          <h3 className="font-semibold text-[15px] mb-3">
             {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
               weekday: "long",
               month: "long",
               day: "numeric",
-              year: "numeric",
             })}
           </h3>
 
           {/* Logged injections */}
           {selectedInjections.length > 0 && (
             <div className="mb-3">
-              <div className="text-xs font-medium text-muted uppercase tracking-wide mb-1.5">
+              <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">
                 Logged
               </div>
               <div className="space-y-2">
@@ -337,9 +274,7 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
                     key={inj.id}
                     className="flex items-center gap-3 text-sm"
                   >
-                    <span
-                      className={`w-2 h-2 rounded-full shrink-0 ${getPeptideColor(inj.peptides?.name || "Unknown")}`}
-                    />
+                    <span className="w-2 h-2 rounded-full bg-success shrink-0" />
                     <div className="flex-1 min-w-0">
                       <span className="font-medium">
                         {inj.peptides?.name || "Unknown"}
@@ -355,7 +290,7 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
                         {inj.injection_site}
                       </span>
                     </div>
-                    <span className="text-muted shrink-0">
+                    <span className="text-muted text-xs shrink-0">
                       {new Date(inj.injection_time).toLocaleTimeString(
                         "en-US",
                         {
@@ -373,7 +308,7 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
           {/* Scheduled doses */}
           {selectedScheduled.length > 0 && (
             <div>
-              <div className="text-xs font-medium text-muted uppercase tracking-wide mb-1.5">
+              <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">
                 Scheduled
               </div>
               <div className="space-y-2">
@@ -384,7 +319,7 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
                   return (
                     <div
                       key={entry.id}
-                      className={`flex items-center gap-3 text-sm ${wasLogged ? "opacity-50 line-through" : ""}`}
+                      className={`flex items-center gap-3 text-sm ${wasLogged ? "opacity-40 line-through" : ""}`}
                     >
                       <span
                         className={`w-2 h-2 rounded-full shrink-0 border-2 ${
@@ -399,7 +334,7 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
                           {mcgToMg(entry.dose_mcg)} mg
                         </span>
                       </div>
-                      <span className="text-muted shrink-0">
+                      <span className="text-muted text-xs shrink-0">
                         {TIME_LABELS[entry.time_of_day] || entry.time_of_day}
                       </span>
                     </div>

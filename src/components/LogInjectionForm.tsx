@@ -1,13 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
-import type { Peptide } from "@/lib/database.types";
+import type { Peptide, InjectionWithPeptide } from "@/lib/database.types";
 import DualDoseInput from "./DualDoseInput";
-import BodyMap from "./BodyMap";
+import BodyMap, { ALL_INJECTION_SITES } from "./BodyMap";
+import type { InjectionSiteInfo } from "./BodyMap";
 
 interface LogInjectionFormProps {
   onSuccess: () => void;
+}
+
+function getRecommendedSite(recentSites: InjectionSiteInfo[], availableSites?: string[]): string | undefined {
+  const sites = availableSites
+    ? ALL_INJECTION_SITES.filter((s) => availableSites.includes(s.id))
+    : ALL_INJECTION_SITES;
+
+  if (sites.length === 0) return undefined;
+
+  // Find the site that was used least recently (or never)
+  let bestSite = sites[0].id;
+  let bestDaysAgo = -1;
+
+  for (const site of sites) {
+    const recent = recentSites.find((r) => r.site === site.id);
+    if (!recent?.lastUsed) {
+      // Never used - strongly recommend
+      return site.id;
+    }
+    const days = Math.floor(
+      (Date.now() - new Date(recent.lastUsed).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (days > bestDaysAgo) {
+      bestDaysAgo = days;
+      bestSite = site.id;
+    }
+  }
+
+  return bestSite;
 }
 
 export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
@@ -19,13 +49,21 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [recentInjections, setRecentInjections] = useState<InjectionWithPeptide[]>([]);
+  const [preferredSites, setPreferredSites] = useState<string[] | undefined>(undefined);
 
   useEffect(() => {
-    apiFetch("/api/peptides")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setPeptides(data);
-      });
+    Promise.all([
+      apiFetch("/api/peptides").then((r) => r.json()),
+      apiFetch("/api/injections?limit=50").then((r) => r.json()),
+      apiFetch("/api/profile").then((r) => r.json()),
+    ]).then(([pepData, injData, profileData]) => {
+      if (Array.isArray(pepData)) setPeptides(pepData);
+      if (Array.isArray(injData)) setRecentInjections(injData);
+      if (profileData?.preferences?.preferred_sites?.length) {
+        setPreferredSites(profileData.preferences.preferred_sites);
+      }
+    });
 
     // Default to current local time
     const now = new Date();
@@ -43,6 +81,32 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
   }, [peptideId, peptides]);
 
   const selectedPeptide = peptides.find((p) => p.id === peptideId);
+
+  // Compute recent site usage
+  const recentSiteInfo = useMemo<InjectionSiteInfo[]>(() => {
+    const siteMap = new Map<string, { lastUsed: string; count: number }>();
+    for (const inj of recentInjections) {
+      const existing = siteMap.get(inj.injection_site);
+      if (!existing || inj.injection_time > existing.lastUsed) {
+        siteMap.set(inj.injection_site, {
+          lastUsed: inj.injection_time,
+          count: (existing?.count || 0) + 1,
+        });
+      } else {
+        existing.count++;
+      }
+    }
+    return Array.from(siteMap.entries()).map(([site, info]) => ({
+      site,
+      lastUsed: info.lastUsed,
+      count: info.count,
+    }));
+  }, [recentInjections]);
+
+  const recommendedSite = useMemo(
+    () => getRecommendedSite(recentSiteInfo, preferredSites),
+    [recentSiteInfo, preferredSites]
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -125,6 +189,9 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
           <BodyMap
             selected={injectionSite}
             onSelect={setInjectionSite}
+            recentSites={recentSiteInfo}
+            recommendedSite={recommendedSite}
+            availableSites={preferredSites}
           />
 
           <div>

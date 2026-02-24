@@ -1,225 +1,138 @@
 "use client";
 
+export interface InjectionSiteInfo {
+  site: string;
+  lastUsed?: string; // ISO date
+  count?: number; // times used in recent history
+}
+
 interface Props {
   selected: string;
   onSelect: (site: string) => void;
+  recentSites?: InjectionSiteInfo[];
+  recommendedSite?: string;
+  availableSites?: string[];
 }
 
-interface SiteRegion {
-  id: string;
-  label: string;
-  // SVG path or points for the clickable zone
-  path: string;
-  // Label position
-  lx: number;
-  ly: number;
-}
-
-const SITE_REGIONS: SiteRegion[] = [
-  {
-    id: "Left deltoid",
-    label: "L Delt",
-    path: "M56,78 L48,82 L44,100 L48,110 L56,105 Z",
-    lx: 34,
-    ly: 95,
-  },
-  {
-    id: "Right deltoid",
-    label: "R Delt",
-    path: "M104,78 L112,82 L116,100 L112,110 L104,105 Z",
-    lx: 118,
-    ly: 95,
-  },
-  {
-    id: "Left abdomen",
-    label: "L Abd",
-    path: "M62,125 L62,150 L80,150 L80,125 Z",
-    lx: 62,
-    ly: 155,
-  },
-  {
-    id: "Right abdomen",
-    label: "R Abd",
-    path: "M80,125 L80,150 L98,150 L98,125 Z",
-    lx: 88,
-    ly: 155,
-  },
-  {
-    id: "Left love handle",
-    label: "L Love Handle",
-    path: "M48,125 L46,140 L54,148 L60,140 L60,125 Z",
-    lx: 32,
-    ly: 137,
-  },
-  {
-    id: "Right love handle",
-    label: "R Love Handle",
-    path: "M100,125 L100,140 L106,148 L114,140 L112,125 Z",
-    lx: 118,
-    ly: 137,
-  },
-  {
-    id: "Left thigh",
-    label: "L Thigh",
-    path: "M62,168 L60,200 L72,206 L78,200 L78,168 Z",
-    lx: 54,
-    ly: 198,
-  },
-  {
-    id: "Right thigh",
-    label: "R Thigh",
-    path: "M82,168 L82,200 L88,206 L100,200 L98,168 Z",
-    lx: 98,
-    ly: 198,
-  },
-  {
-    id: "Left glute",
-    label: "L Glute",
-    path: "M62,148 L58,168 L72,174 L78,168 L78,148 Z",
-    lx: 54,
-    ly: 172,
-  },
-  {
-    id: "Right glute",
-    label: "R Glute",
-    path: "M82,148 L82,168 L88,174 L102,168 L98,148 Z",
-    lx: 98,
-    ly: 172,
-  },
+const ALL_INJECTION_SITES = [
+  { id: "Left deltoid", label: "L Deltoid", group: "Upper" },
+  { id: "Right deltoid", label: "R Deltoid", group: "Upper" },
+  { id: "Left abdomen", label: "L Abdomen", group: "Core" },
+  { id: "Right abdomen", label: "R Abdomen", group: "Core" },
+  { id: "Left love handle", label: "L Love Handle", group: "Core" },
+  { id: "Right love handle", label: "R Love Handle", group: "Core" },
+  { id: "Left thigh", label: "L Thigh", group: "Lower" },
+  { id: "Right thigh", label: "R Thigh", group: "Lower" },
+  { id: "Left glute", label: "L Glute", group: "Lower" },
+  { id: "Right glute", label: "R Glute", group: "Lower" },
 ];
 
-export default function BodyMap({ selected, onSelect }: Props) {
+export { ALL_INJECTION_SITES };
+
+function daysAgo(dateStr: string): number {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatLastUsed(dateStr: string): string {
+  const days = daysAgo(dateStr);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
+}
+
+export default function BodyMap({
+  selected,
+  onSelect,
+  recentSites = [],
+  recommendedSite,
+  availableSites,
+}: Props) {
+  const recentMap = new Map(recentSites.map((s) => [s.site, s]));
+
+  // Filter to only available sites if specified
+  const sites = availableSites
+    ? ALL_INJECTION_SITES.filter((s) => availableSites.includes(s.id))
+    : ALL_INJECTION_SITES;
+
+  // Group sites
+  const groups = ["Upper", "Core", "Lower"];
+  const grouped = groups
+    .map((g) => ({
+      label: g,
+      sites: sites.filter((s) => s.group === g),
+    }))
+    .filter((g) => g.sites.length > 0);
+
   return (
     <div>
       <label className="block text-sm font-medium mb-2">Injection Site</label>
-      <div className="flex flex-col items-center">
-        <div className="relative w-full" style={{ maxWidth: 220 }}>
-          <svg
-            viewBox="0 0 160 280"
-            className="w-full h-auto"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* Body silhouette */}
-            <g fill="none" stroke="var(--border)" strokeWidth="1.5" strokeLinejoin="round">
-              {/* Head */}
-              <ellipse cx="80" cy="30" rx="18" ry="22" fill="var(--surface-hover)" />
-              {/* Neck */}
-              <rect x="73" y="50" width="14" height="12" rx="3" fill="var(--surface-hover)" />
-              {/* Torso */}
-              <path
-                d="M58,62 L56,78 L48,82 L44,100 L48,130 L52,145 L58,168 L60,170 L72,174 L80,176 L88,174 L100,170 L102,168 L108,145 L112,130 L116,100 L112,82 L104,78 L102,62 Z"
-                fill="var(--surface-hover)"
-              />
-              {/* Left arm */}
-              <path
-                d="M48,82 L40,110 L36,140 L34,160 L38,162 L42,142 L48,115"
-                fill="none"
-              />
-              {/* Right arm */}
-              <path
-                d="M112,82 L120,110 L124,140 L126,160 L122,162 L118,142 L112,115"
-                fill="none"
-              />
-              {/* Left leg */}
-              <path
-                d="M60,170 L58,200 L56,235 L54,258 L58,262 L64,240 L68,210 L72,174"
-                fill="none"
-              />
-              {/* Right leg */}
-              <path
-                d="M100,170 L102,200 L104,235 L106,258 L102,262 L96,240 L92,210 L88,174"
-                fill="none"
-              />
-            </g>
 
-            {/* Center line guide (subtle) */}
-            <line
-              x1="80" y1="62" x2="80" y2="176"
-              stroke="var(--border)"
-              strokeWidth="0.5"
-              strokeDasharray="2,4"
-              opacity="0.4"
-            />
+      {recommendedSite && (
+        <div className="mb-3 px-3 py-2 bg-success/8 border border-success/15 rounded-xl flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-success shrink-0" />
+          <span className="text-xs text-success font-medium">
+            Recommended: <span className="font-semibold">{recommendedSite}</span>
+          </span>
+        </div>
+      )}
 
-            {/* Clickable site regions */}
-            {SITE_REGIONS.map((region) => {
-              const isSelected = selected === region.id;
-              return (
-                <g key={region.id}>
-                  <path
-                    d={region.path}
-                    fill={isSelected ? "var(--primary)" : "var(--primary)"}
-                    fillOpacity={isSelected ? 0.35 : 0.08}
-                    stroke={isSelected ? "var(--primary)" : "var(--primary)"}
-                    strokeWidth={isSelected ? 2 : 1}
-                    strokeOpacity={isSelected ? 1 : 0.3}
-                    rx="4"
-                    className="cursor-pointer transition-all"
-                    onClick={() => onSelect(region.id)}
-                  />
-                  {/* Pulse ring on selected */}
-                  {isSelected && (
-                    <circle
-                      cx={(parseFloat(region.path.match(/M(\d+)/)?.[1] || "0") + parseFloat(region.path.match(/L\d+,\d+\sL(\d+)/)?.[1] || "0")) / 2}
-                      cy={(parseFloat(region.path.match(/M\d+,(\d+)/)?.[1] || "0") + parseFloat(region.path.match(/L\d+,(\d+)\sL\d+/)?.[1] || "0")) / 2}
-                      r="4"
-                      fill="var(--primary)"
-                      opacity="0.8"
-                    >
-                      <animate
-                        attributeName="r"
-                        values="3;7;3"
-                        dur="2s"
-                        repeatCount="indefinite"
-                      />
-                      <animate
-                        attributeName="opacity"
-                        values="0.8;0.2;0.8"
-                        dur="2s"
-                        repeatCount="indefinite"
-                      />
-                    </circle>
-                  )}
-                </g>
-              );
-            })}
-          </svg>
+      <div className="space-y-3">
+        {grouped.map((group) => (
+          <div key={group.label}>
+            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">
+              {group.label}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {group.sites.map((site) => {
+                const isSelected = selected === site.id;
+                const isRecommended = recommendedSite === site.id;
+                const recent = recentMap.get(site.id);
 
-          {/* Side labels */}
-          <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-            {SITE_REGIONS.map((region) => {
-              const isSelected = selected === region.id;
-              const isLeft = region.lx < 80;
-              // Compute position as percentage of viewBox
-              const xPct = (region.lx / 160) * 100;
-              const yPct = (region.ly / 280) * 100;
-              return (
-                <div
-                  key={region.id + "-label"}
-                  className={`absolute text-[9px] font-semibold whitespace-nowrap transition-colors pointer-events-auto cursor-pointer ${
-                    isSelected ? "text-primary" : "text-muted"
-                  }`}
-                  style={{
-                    left: `${xPct}%`,
-                    top: `${yPct}%`,
-                    transform: `translate(${isLeft ? "-100%" : "0%"}, -50%)`,
-                  }}
-                  onClick={() => onSelect(region.id)}
-                >
-                  {region.label}
-                </div>
-              );
-            })}
+                return (
+                  <button
+                    key={site.id}
+                    type="button"
+                    onClick={() => onSelect(site.id)}
+                    className={`relative text-left px-3 py-2.5 rounded-xl text-sm transition-all ${
+                      isSelected
+                        ? "bg-primary text-white shadow-sm"
+                        : isRecommended
+                          ? "bg-success/8 border-2 border-success/25 text-foreground"
+                          : "bg-surface-hover text-foreground border-2 border-transparent"
+                    }`}
+                  >
+                    <div className="font-medium text-[13px]">{site.label}</div>
+                    {recent?.lastUsed && (
+                      <div
+                        className={`text-[11px] mt-0.5 ${
+                          isSelected ? "text-white/70" : "text-muted"
+                        }`}
+                      >
+                        {formatLastUsed(recent.lastUsed)}
+                        {recent.count && recent.count > 1
+                          ? ` (${recent.count}x)`
+                          : ""}
+                      </div>
+                    )}
+                    {isRecommended && !isSelected && (
+                      <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-success" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-
-        {/* Selected site display */}
-        <div className={`mt-2 text-sm font-medium text-center transition-colors ${
-          selected ? "text-primary" : "text-muted"
-        }`}>
-          {selected || "Tap a region to select"}
-        </div>
+        ))}
       </div>
+
+      {selected && (
+        <div className="mt-2 text-sm font-medium text-primary text-center">
+          {selected}
+        </div>
+      )}
     </div>
   );
 }

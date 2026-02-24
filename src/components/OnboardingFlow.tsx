@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
 import type { UserPreferences } from "@/lib/database.types";
+import { ALL_INJECTION_SITES } from "./BodyMap";
 
 const SYRINGE_OPTIONS = [
   {
@@ -39,7 +40,7 @@ const GOAL_OPTIONS = [
   { id: "immune", label: "Immune Support", icon: "🛡️" },
 ];
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 export default function OnboardingFlow() {
   const { refreshProfile } = useAuth();
@@ -49,23 +50,34 @@ export default function OnboardingFlow() {
   // Step 1: Syringe
   const [selectedSyringe, setSelectedSyringe] = useState(0.5);
 
-  // Step 2: Body comp
+  // Step 2: Injection site preferences
+  const [preferredSites, setPreferredSites] = useState<string[]>(
+    ALL_INJECTION_SITES.map((s) => s.id)
+  );
+
+  // Step 3: Body comp
   const [sex, setSex] = useState<"male" | "female" | "other" | "">("");
   const [age, setAge] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [weightKg, setWeightKg] = useState("");
   const [bodyFatPct, setBodyFatPct] = useState("");
 
-  // Step 3: Goals
+  // Step 4: Goals
   const [goals, setGoals] = useState<string[]>([]);
 
-  // Step 4: Experience & aggressiveness
+  // Step 5: Experience & aggressiveness
   const [experience, setExperience] = useState<"beginner" | "intermediate" | "advanced">("beginner");
   const [aggressiveness, setAggressiveness] = useState<"conservative" | "moderate" | "aggressive">("moderate");
 
   function toggleGoal(id: string) {
     setGoals((prev) =>
       prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
+    );
+  }
+
+  function toggleSite(id: string) {
+    setPreferredSites((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
   }
 
@@ -81,6 +93,7 @@ export default function OnboardingFlow() {
         goals,
         experience_level: experience,
         aggressiveness,
+        preferred_sites: preferredSites,
       };
 
       await apiFetch("/api/profile", {
@@ -97,6 +110,13 @@ export default function OnboardingFlow() {
       setLoading(false);
     }
   }
+
+  // Group sites for display
+  const siteGroups = [
+    { label: "Upper Body", sites: ALL_INJECTION_SITES.filter((s) => s.group === "Upper") },
+    { label: "Core", sites: ALL_INJECTION_SITES.filter((s) => s.group === "Core") },
+    { label: "Lower Body", sites: ALL_INJECTION_SITES.filter((s) => s.group === "Lower") },
+  ];
 
   return (
     <div className="flex flex-col h-dvh items-center justify-center px-6">
@@ -174,8 +194,72 @@ export default function OnboardingFlow() {
           </>
         )}
 
-        {/* Step 2: Body composition */}
+        {/* Step 2: Injection site preferences */}
         {step === 2 && (
+          <>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-bold">Injection Sites</h2>
+              <p className="text-muted text-sm">
+                Select the sites you&apos;re comfortable using. We&apos;ll help you rotate
+                between these areas.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {siteGroups.map((group) => (
+                <div key={group.label}>
+                  <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">
+                    {group.label}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {group.sites.map((site) => {
+                      const isSelected = preferredSites.includes(site.id);
+                      return (
+                        <button
+                          key={site.id}
+                          type="button"
+                          onClick={() => toggleSite(site.id)}
+                          className={`px-3 py-2.5 rounded-xl text-sm text-left transition-all ${
+                            isSelected
+                              ? "bg-primary/10 border-2 border-primary text-foreground"
+                              : "bg-surface border-2 border-border text-muted hover:border-primary/40"
+                          }`}
+                        >
+                          <span className="font-medium">{site.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep(1)}
+                className="flex-1 border border-border text-foreground font-semibold py-3 rounded-xl transition-colors hover:bg-surface-hover"
+              >
+                Back
+              </button>
+              <button
+                onClick={() => setStep(3)}
+                disabled={preferredSites.length < 2}
+                className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+
+            {preferredSites.length < 2 && (
+              <p className="text-xs text-muted text-center">
+                Select at least 2 sites for proper rotation.
+              </p>
+            )}
+          </>
+        )}
+
+        {/* Step 3: Body composition */}
+        {step === 3 && (
           <>
             <div className="text-center space-y-2">
               <h2 className="text-xl font-bold">About You</h2>
@@ -264,13 +348,13 @@ export default function OnboardingFlow() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 className="flex-1 border border-border text-foreground font-semibold py-3 rounded-xl transition-colors hover:bg-surface-hover"
               >
                 Back
               </button>
               <button
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-colors"
               >
                 Next
@@ -279,8 +363,8 @@ export default function OnboardingFlow() {
           </>
         )}
 
-        {/* Step 3: Goals */}
-        {step === 3 && (
+        {/* Step 4: Goals */}
+        {step === 4 && (
           <>
             <div className="text-center space-y-2">
               <h2 className="text-xl font-bold">What are your goals?</h2>
@@ -312,13 +396,13 @@ export default function OnboardingFlow() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3)}
                 className="flex-1 border border-border text-foreground font-semibold py-3 rounded-xl transition-colors hover:bg-surface-hover"
               >
                 Back
               </button>
               <button
-                onClick={() => setStep(4)}
+                onClick={() => setStep(5)}
                 disabled={goals.length === 0}
                 className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50"
               >
@@ -328,8 +412,8 @@ export default function OnboardingFlow() {
           </>
         )}
 
-        {/* Step 4: Experience & Aggressiveness */}
-        {step === 4 && (
+        {/* Step 5: Experience & Aggressiveness */}
+        {step === 5 && (
           <>
             <div className="text-center space-y-2">
               <h2 className="text-xl font-bold">Your Approach</h2>
@@ -422,7 +506,7 @@ export default function OnboardingFlow() {
 
             <div className="flex gap-3">
               <button
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 className="flex-1 border border-border text-foreground font-semibold py-3 rounded-xl transition-colors hover:bg-surface-hover"
               >
                 Back

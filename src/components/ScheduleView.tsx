@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
-import type { ScheduleEntryWithPeptide } from "@/lib/database.types";
+import type {
+  ScheduleEntryWithPeptide,
+  InjectionWithPeptide,
+} from "@/lib/database.types";
+import { ALL_INJECTION_SITES } from "./BodyMap";
+import type { InjectionSiteInfo } from "./BodyMap";
 
 interface ScheduleViewProps {
   refreshKey: number;
@@ -27,21 +32,45 @@ const TIME_LABELS: Record<string, string> = {
   evening: "Evening",
 };
 
-const INJECTION_SITES = [
-  "Left deltoid",
-  "Right deltoid",
-  "Left abdomen",
-  "Right abdomen",
-  "Left love handle",
-  "Right love handle",
-  "Left thigh",
-  "Right thigh",
-  "Left glute",
-  "Right glute",
-];
-
 function mcgToMg(mcg: number): string {
   return String(Math.round((mcg / 1000) * 10000) / 10000);
+}
+
+function getRecommendedSite(recentSites: InjectionSiteInfo[], availableSites?: string[]): string | undefined {
+  const sites = availableSites
+    ? ALL_INJECTION_SITES.filter((s) => availableSites.includes(s.id))
+    : ALL_INJECTION_SITES;
+
+  if (sites.length === 0) return undefined;
+
+  let bestSite = sites[0].id;
+  let bestDaysAgo = -1;
+
+  for (const site of sites) {
+    const recent = recentSites.find((r) => r.site === site.id);
+    if (!recent?.lastUsed) {
+      return site.id;
+    }
+    const days = Math.floor(
+      (Date.now() - new Date(recent.lastUsed).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (days > bestDaysAgo) {
+      bestDaysAgo = days;
+      bestSite = site.id;
+    }
+  }
+
+  return bestSite;
+}
+
+function formatLastUsed(dateStr: string): string {
+  const days = Math.floor(
+    (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
 }
 
 export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewProps) {
@@ -59,12 +88,26 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
   const [loggingDose, setLoggingDose] = useState(false);
   const [doseSuccess, setDoseSuccess] = useState<string | null>(null);
 
+  // Injection history for site recommendations
+  const [recentInjections, setRecentInjections] = useState<InjectionWithPeptide[]>([]);
+  const [preferredSites, setPreferredSites] = useState<string[] | undefined>(undefined);
+
   const loadSchedule = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch("/api/schedule");
-      const data = await res.json();
-      if (Array.isArray(data)) setSchedule(data);
+      const [schedRes, injRes, profileRes] = await Promise.all([
+        apiFetch("/api/schedule"),
+        apiFetch("/api/injections?limit=50"),
+        apiFetch("/api/profile"),
+      ]);
+      const schedData = await schedRes.json();
+      const injData = await injRes.json();
+      const profileData = await profileRes.json();
+      if (Array.isArray(schedData)) setSchedule(schedData);
+      if (Array.isArray(injData)) setRecentInjections(injData);
+      if (profileData?.preferences?.preferred_sites?.length) {
+        setPreferredSites(profileData.preferences.preferred_sites);
+      }
     } finally {
       setLoading(false);
     }
@@ -81,6 +124,36 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
       return () => clearTimeout(t);
     }
   }, [doseSuccess]);
+
+  // Compute recent site usage
+  const recentSiteInfo = useMemo<InjectionSiteInfo[]>(() => {
+    const siteMap = new Map<string, { lastUsed: string; count: number }>();
+    for (const inj of recentInjections) {
+      const existing = siteMap.get(inj.injection_site);
+      if (!existing || inj.injection_time > existing.lastUsed) {
+        siteMap.set(inj.injection_site, {
+          lastUsed: inj.injection_time,
+          count: (existing?.count || 0) + 1,
+        });
+      } else {
+        existing.count++;
+      }
+    }
+    return Array.from(siteMap.entries()).map(([site, info]) => ({
+      site,
+      lastUsed: info.lastUsed,
+      count: info.count,
+    }));
+  }, [recentInjections]);
+
+  const recommendedSite = useMemo(
+    () => getRecommendedSite(recentSiteInfo, preferredSites),
+    [recentSiteInfo, preferredSites]
+  );
+
+  const activeSites = preferredSites
+    ? ALL_INJECTION_SITES.filter((s) => preferredSites.includes(s.id))
+    : ALL_INJECTION_SITES;
 
   async function generateSchedule() {
     setGenerating(true);
@@ -155,6 +228,10 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
         setDoseSuccess(entry.peptides?.name || "Dose");
         setTakingDoseId(null);
         setSelectedSite("");
+        // Refresh injection history
+        const injRes = await apiFetch("/api/injections?limit=50");
+        const injData = await injRes.json();
+        if (Array.isArray(injData)) setRecentInjections(injData);
         onDoseLogged?.();
       }
     } finally {
@@ -309,7 +386,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
         </div>
       )}
 
-      {/* Take Dose Sheet */}
+      {/* Take Dose Sheet - with site history and recommendations */}
       {takingDoseId && (
         <div className="bg-surface rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-border/50">
@@ -323,20 +400,51 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
               </button>
             </div>
           </div>
+
+          {/* Recommended site banner */}
+          {recommendedSite && (
+            <div className="px-4 pt-3">
+              <div className="px-3 py-2 bg-success/8 border border-success/15 rounded-xl flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-success shrink-0" />
+                <span className="text-xs text-success font-medium">
+                  Recommended: <span className="font-semibold">{recommendedSite}</span>
+                  {" "}(least recently used)
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="p-3 grid grid-cols-2 gap-2">
-            {INJECTION_SITES.map((site) => (
-              <button
-                key={site}
-                onClick={() => setSelectedSite(site)}
-                className={`text-left px-3 py-2.5 rounded-xl text-sm transition-all ${
-                  selectedSite === site
-                    ? "bg-primary text-white font-medium"
-                    : "bg-surface-hover text-foreground"
-                }`}
-              >
-                {site}
-              </button>
-            ))}
+            {activeSites.map((site) => {
+              const isSelected = selectedSite === site.id;
+              const isRecommended = recommendedSite === site.id;
+              const recent = recentSiteInfo.find((r) => r.site === site.id);
+
+              return (
+                <button
+                  key={site.id}
+                  onClick={() => setSelectedSite(site.id)}
+                  className={`relative text-left px-3 py-2.5 rounded-xl text-sm transition-all ${
+                    isSelected
+                      ? "bg-primary text-white font-medium"
+                      : isRecommended
+                        ? "bg-success/8 border-2 border-success/25 text-foreground"
+                        : "bg-surface-hover text-foreground border-2 border-transparent"
+                  }`}
+                >
+                  <div className="font-medium text-[13px]">{site.label}</div>
+                  {recent?.lastUsed && (
+                    <div className={`text-[11px] mt-0.5 ${isSelected ? "text-white/70" : "text-muted"}`}>
+                      {formatLastUsed(recent.lastUsed)}
+                      {recent.count && recent.count > 1 ? ` (${recent.count}x)` : ""}
+                    </div>
+                  )}
+                  {isRecommended && !isSelected && (
+                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-success" />
+                  )}
+                </button>
+              );
+            })}
           </div>
           {selectedSite && (
             <div className="px-4 pb-4">

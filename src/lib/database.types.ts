@@ -43,6 +43,7 @@ export interface UserPreferences {
 
   // Preferences
   preferred_injection_time?: string;
+  preferred_sites?: string[];
   notes?: string;
 }
 

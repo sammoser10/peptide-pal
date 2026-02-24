@@ -66,8 +66,17 @@ Important:
     const textBlock = response.content.find((block) => block.type === "text");
     const raw = textBlock?.text ?? "";
 
+    // Try parsing directly first, then try extracting from markdown code fences
+    let jsonStr = raw.trim();
+
+    // Strip markdown code fences if present
+    const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (fenceMatch) {
+      jsonStr = fenceMatch[1].trim();
+    }
+
     try {
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(jsonStr);
       return NextResponse.json(parsed);
     } catch {
       return NextResponse.json(
