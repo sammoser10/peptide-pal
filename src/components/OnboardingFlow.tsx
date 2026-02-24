@@ -46,6 +46,7 @@ export default function OnboardingFlow() {
   const { refreshProfile } = useAuth();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   // Step 1: Syringe
   const [selectedSyringe, setSelectedSyringe] = useState(0.5);
@@ -83,6 +84,7 @@ export default function OnboardingFlow() {
 
   async function handleComplete() {
     setLoading(true);
+    setError("");
     try {
       const preferences: UserPreferences = {
         sex: sex || undefined,
@@ -96,7 +98,7 @@ export default function OnboardingFlow() {
         preferred_sites: preferredSites,
       };
 
-      await apiFetch("/api/profile", {
+      const res = await apiFetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -105,7 +107,15 @@ export default function OnboardingFlow() {
           preferences,
         }),
       });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save profile");
+      }
+
       await refreshProfile();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -503,6 +513,12 @@ export default function OnboardingFlow() {
                 </div>
               </div>
             </div>
+
+            {error && (
+              <div className="bg-danger/10 text-danger rounded-lg p-3 text-sm">
+                {error}
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button

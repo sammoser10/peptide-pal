@@ -96,8 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function refreshProfile() {
-    if (session?.access_token) {
-      await fetchProfile(session.access_token);
+    const {
+      data: { session: currentSession },
+    } = await supabase.auth.getSession();
+    if (currentSession?.access_token) {
+      await fetchProfile(currentSession.access_token);
     }
   }
 
