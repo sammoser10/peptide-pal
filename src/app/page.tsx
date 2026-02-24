@@ -3,10 +3,11 @@
 import { useState } from "react";
 import LogInjectionForm from "@/components/LogInjectionForm";
 import InjectionHistory from "@/components/InjectionHistory";
+import CalendarView from "@/components/CalendarView";
 import PeptideManager from "@/components/PeptideManager";
 import AIRecommendation from "@/components/AIRecommendation";
 
-type Tab = "log" | "history" | "schedule" | "peptides";
+type Tab = "log" | "history" | "calendar" | "schedule" | "peptides";
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   {
@@ -46,6 +47,28 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
       >
         <path d="M12 8v4l3 3" />
         <circle cx="12" cy="12" r="10" />
+      </svg>
+    ),
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="3" y="4" width="18" height="18" rx="2" />
+        <path d="M16 2v4" />
+        <path d="M8 2v4" />
+        <path d="M3 10h18" />
       </svg>
     ),
   },
@@ -126,6 +149,13 @@ export default function Home() {
           <div>
             <h2 className="text-lg font-semibold mb-4">Injection History</h2>
             <InjectionHistory refreshKey={refreshKey} />
+          </div>
+        )}
+
+        {activeTab === "calendar" && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Calendar</h2>
+            <CalendarView refreshKey={refreshKey} />
           </div>
         )}
 
