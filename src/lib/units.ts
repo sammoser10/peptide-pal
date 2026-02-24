@@ -59,8 +59,9 @@ export function formatDose(
   reconstitutionVolumeMl: number | null
 ): string {
   const units = doseToUnits(doseMcg, vialSizeMg, reconstitutionVolumeMl);
+  const doseMg = Math.round((doseMcg / 1000) * 10000) / 10000;
   if (units !== null) {
-    return `${units} units (${doseMcg} mcg)`;
+    return `${units} units (${doseMg} mg)`;
   }
-  return `${doseMcg} mcg`;
+  return `${doseMg} mg`;
 }

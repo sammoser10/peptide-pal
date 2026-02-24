@@ -8,7 +8,7 @@ import LogInjectionForm from "@/components/LogInjectionForm";
 import InjectionHistory from "@/components/InjectionHistory";
 import CalendarView from "@/components/CalendarView";
 import PeptideManager from "@/components/PeptideManager";
-import AIRecommendation from "@/components/AIRecommendation";
+import ScheduleView from "@/components/ScheduleView";
 
 type Tab = "log" | "history" | "calendar" | "schedule" | "peptides";
 
@@ -208,7 +208,7 @@ export default function Home() {
         {activeTab === "schedule" && (
           <div>
             <h2 className="text-lg font-semibold mb-4">AI Schedule</h2>
-            <AIRecommendation refreshKey={refreshKey} />
+            <ScheduleView refreshKey={refreshKey} />
           </div>
         )}
 

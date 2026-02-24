@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
 
   const { supabase, userId } = auth;
 
-  // Fetch all peptides and recent injections for this user
-  const [peptidesResult, injectionsResult] = await Promise.all([
+  // Fetch peptides, recent injections, and user profile
+  const [peptidesResult, injectionsResult, profileResult] = await Promise.all([
     supabase
       .from("peptides")
       .select("*")
@@ -23,6 +23,11 @@ export async function GET(request: NextRequest) {
       .eq("user_id", userId)
       .order("injection_time", { ascending: false })
       .limit(100),
+    supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single(),
   ]);
 
   if (peptidesResult.error || injectionsResult.error) {
@@ -34,16 +39,24 @@ export async function GET(request: NextRequest) {
 
   const peptides = peptidesResult.data;
   const injections = injectionsResult.data;
+  const profile = profileResult.data;
+  const preferences = profile?.preferences;
 
   if (peptides.length === 0) {
     return NextResponse.json({
-      recommendation:
-        "No peptides in your regimen yet. Add a peptide to get started!",
+      error: "No peptides in your regimen yet. Add a peptide to get started!",
     });
   }
 
-  // Build a summary for Claude
-  const now = new Date().toISOString();
+  // Build peptide list with IDs for structured output
+  const peptideMap = peptides.map((p) => ({
+    id: p.id,
+    name: p.name,
+    default_dose_mcg: p.default_dose_mcg,
+    frequency: p.frequency_description || "Not specified",
+    notes: p.notes || "",
+  }));
+
   const peptideSummaries = peptides
     .map((p) => {
       const history = injections
@@ -51,12 +64,12 @@ export async function GET(request: NextRequest) {
         .slice(0, 10)
         .map(
           (inj) =>
-            `  - ${inj.dose_mcg} mcg at ${inj.injection_site} on ${new Date(inj.injection_time).toLocaleString()} ${inj.notes ? `(${inj.notes})` : ""}`
+            `  - ${inj.dose_mcg} mcg (${Math.round((inj.dose_mcg / 1000) * 10000) / 10000} mg) at ${inj.injection_site} on ${new Date(inj.injection_time).toLocaleString()} ${inj.notes ? `(${inj.notes})` : ""}`
         )
         .join("\n");
 
-      return `Peptide: ${p.name}
-  Default dose: ${p.default_dose_mcg} mcg
+      return `Peptide: ${p.name} (ID: ${p.id})
+  Default dose: ${p.default_dose_mcg} mcg (${Math.round((p.default_dose_mcg / 1000) * 10000) / 10000} mg)
   Prescribed frequency: ${p.frequency_description || "Not specified"}
   Notes: ${p.notes || "None"}
   Recent injection history (most recent first):
@@ -64,35 +77,83 @@ ${history || "  No injections logged yet"}`;
     })
     .join("\n\n");
 
-  const userPrompt = `Current date/time: ${now}
+  // Build user context
+  let userContext = "";
+  if (preferences) {
+    const parts: string[] = [];
+    if (preferences.sex) parts.push(`Sex: ${preferences.sex}`);
+    if (preferences.age) parts.push(`Age: ${preferences.age}`);
+    if (preferences.height_cm) parts.push(`Height: ${preferences.height_cm} cm`);
+    if (preferences.weight_kg) parts.push(`Weight: ${preferences.weight_kg} kg`);
+    if (preferences.body_fat_pct) parts.push(`Body fat: ~${preferences.body_fat_pct}%`);
+    if (preferences.goals?.length) parts.push(`Goals: ${preferences.goals.join(", ")}`);
+    if (preferences.experience_level) parts.push(`Experience: ${preferences.experience_level}`);
+    if (preferences.aggressiveness) parts.push(`Approach: ${preferences.aggressiveness}`);
+    if (preferences.notes) parts.push(`Notes: ${preferences.notes}`);
+    if (parts.length > 0) {
+      userContext = `\n\nUser Profile:\n${parts.join("\n")}`;
+    }
+  }
 
-Here is my peptide regimen and injection history:
+  const now = new Date().toISOString();
+  const userPrompt = `Current date/time: ${now}${userContext}
+
+Here is my peptide stack and injection history:
 
 ${peptideSummaries}
 
-Based on this information, please tell me:
-1. Which peptide(s) I should take next and when
-2. If I'm overdue for any doses
-3. Any observations about my injection patterns (e.g., site rotation)
-4. A brief schedule for the upcoming week
+Available peptides (use these exact IDs in your schedule):
+${JSON.stringify(peptideMap, null, 2)}
 
-Keep the response concise and actionable. Use simple language.`;
+Based on my profile, goals, experience level, aggressiveness preference, and peptide stack, generate an optimal weekly dosing schedule.
+
+You MUST respond with valid JSON only (no markdown, no code fences). Use this exact format:
+{
+  "schedule": [
+    {
+      "peptide_id": "<uuid from the peptide list>",
+      "day_of_week": <0-6, where 0=Sunday>,
+      "time_of_day": "<morning|afternoon|evening>",
+      "dose_mcg": <number>,
+      "notes": "<optional brief note>"
+    }
+  ],
+  "summary": "<A brief 2-3 sentence explanation of the schedule rationale>",
+  "tips": ["<tip 1>", "<tip 2>"]
+}
+
+Important:
+- Only use peptide IDs from the list above
+- Respect the prescribed frequency for each peptide
+- Adjust doses based on user's experience and aggressiveness preference
+- Consider the user's goals when prioritizing timing
+- Spread injections across the week for consistency
+- Include site rotation tips`;
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-opus-4-6",
-      max_tokens: 1024,
-      thinking: { type: "adaptive" },
+      model: "claude-sonnet-4-6",
+      max_tokens: 2048,
       system:
-        "You are a helpful peptide regimen assistant. You help users track their peptide injections and suggest optimal timing for their next doses based on their prescribed frequency and injection history. Always remind users to follow their healthcare provider's instructions. Be concise and practical. Format your response with clear sections using markdown.",
+        "You are a peptide regimen scheduling assistant. You create structured weekly dosing schedules based on the user's peptide stack, body composition, goals, and preferences. Always respond with valid JSON only. Be practical and evidence-informed. Always note that users should follow their healthcare provider's guidance.",
       messages: [{ role: "user", content: userPrompt }],
     });
 
     const textBlock = response.content.find((block) => block.type === "text");
-    const recommendation =
-      textBlock?.text ?? "Unable to generate recommendation.";
+    const raw = textBlock?.text ?? "";
 
-    return NextResponse.json({ recommendation });
+    // Parse JSON from response
+    try {
+      const parsed = JSON.parse(raw);
+      return NextResponse.json(parsed);
+    } catch {
+      // If JSON parsing fails, return the raw text as a fallback
+      return NextResponse.json({
+        schedule: [],
+        summary: raw,
+        tips: [],
+      });
+    }
   } catch (error) {
     console.error("Claude API error:", error);
     return NextResponse.json(

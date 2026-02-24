@@ -26,9 +26,22 @@ export interface InjectionWithPeptide extends Injection {
 }
 
 export interface UserPreferences {
+  // Body composition
+  height_cm?: number;
+  weight_kg?: number;
+  body_fat_pct?: number;
+  sex?: "male" | "female" | "other";
+  age?: number;
+
+  // Goals
   goals?: string[];
+
+  // Experience & approach
   experience_level?: "beginner" | "intermediate" | "advanced";
   injection_comfort?: "new" | "comfortable" | "experienced";
+  aggressiveness?: "conservative" | "moderate" | "aggressive";
+
+  // Preferences
   preferred_injection_time?: string;
   notes?: string;
 }
@@ -40,6 +53,21 @@ export interface UserProfile {
   onboarding_completed: boolean;
   preferences: UserPreferences | null;
   created_at: string;
+}
+
+export interface ScheduleEntry {
+  id: string;
+  user_id: string;
+  peptide_id: string;
+  day_of_week: number; // 0=Sunday through 6=Saturday
+  time_of_day: "morning" | "afternoon" | "evening";
+  dose_mcg: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface ScheduleEntryWithPeptide extends ScheduleEntry {
+  peptides: Peptide;
 }
 
 export interface AIChatMessage {

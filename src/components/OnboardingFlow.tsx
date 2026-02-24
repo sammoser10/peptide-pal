@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { apiFetch } from "@/lib/api";
+import type { UserPreferences } from "@/lib/database.types";
 
 const SYRINGE_OPTIONS = [
   {
@@ -25,21 +26,70 @@ const SYRINGE_OPTIONS = [
   },
 ];
 
+const GOAL_OPTIONS = [
+  { id: "fat_loss", label: "Fat Loss", icon: "🔥" },
+  { id: "muscle_gain", label: "Muscle Gain", icon: "💪" },
+  { id: "recovery", label: "Recovery & Healing", icon: "🩹" },
+  { id: "anti_aging", label: "Anti-Aging", icon: "⏳" },
+  { id: "sleep", label: "Better Sleep", icon: "😴" },
+  { id: "cognitive", label: "Cognitive Enhancement", icon: "🧠" },
+  { id: "energy", label: "More Energy", icon: "⚡" },
+  { id: "skin_hair", label: "Skin & Hair", icon: "✨" },
+  { id: "sexual_health", label: "Sexual Health", icon: "❤️" },
+  { id: "immune", label: "Immune Support", icon: "🛡️" },
+];
+
+const TOTAL_STEPS = 5;
+
 export default function OnboardingFlow() {
   const { refreshProfile } = useAuth();
   const [step, setStep] = useState(0);
-  const [selectedSyringe, setSelectedSyringe] = useState(0.5);
   const [loading, setLoading] = useState(false);
+
+  // Step 1: Syringe
+  const [selectedSyringe, setSelectedSyringe] = useState(0.5);
+
+  // Step 2: Body comp
+  const [sex, setSex] = useState<"male" | "female" | "other" | "">("");
+  const [age, setAge] = useState("");
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [bodyFatPct, setBodyFatPct] = useState("");
+
+  // Step 3: Goals
+  const [goals, setGoals] = useState<string[]>([]);
+
+  // Step 4: Experience & aggressiveness
+  const [experience, setExperience] = useState<"beginner" | "intermediate" | "advanced">("beginner");
+  const [aggressiveness, setAggressiveness] = useState<"conservative" | "moderate" | "aggressive">("moderate");
+
+  function toggleGoal(id: string) {
+    setGoals((prev) =>
+      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
+    );
+  }
 
   async function handleComplete() {
     setLoading(true);
     try {
+      const preferences: UserPreferences = {
+        sex: sex || undefined,
+        age: age ? parseInt(age) : undefined,
+        height_cm: heightCm ? parseFloat(heightCm) : undefined,
+        weight_kg: weightKg ? parseFloat(weightKg) : undefined,
+        body_fat_pct: bodyFatPct ? parseFloat(bodyFatPct) : undefined,
+        goals,
+        experience_level: experience,
+        aggressiveness,
+      };
+
       await apiFetch("/api/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           syringe_size_ml: selectedSyringe,
           onboarding_completed: true,
+          preferences,
         }),
       });
       await refreshProfile();
@@ -51,6 +101,21 @@ export default function OnboardingFlow() {
   return (
     <div className="flex flex-col h-dvh items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-6">
+        {/* Progress bar */}
+        {step > 0 && (
+          <div className="flex gap-1.5">
+            {Array.from({ length: TOTAL_STEPS - 1 }).map((_, i) => (
+              <div
+                key={i}
+                className={`flex-1 h-1 rounded-full transition-colors ${
+                  i < step ? "bg-primary" : "bg-border"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Step 0: Welcome */}
         {step === 0 && (
           <>
             <div className="text-center space-y-3">
@@ -58,7 +123,8 @@ export default function OnboardingFlow() {
                 Welcome to <span className="text-primary">Peptide</span> Pal
               </h1>
               <p className="text-muted">
-                Let&apos;s get you set up. This will only take a moment.
+                Let&apos;s get you set up so the AI can build you a personalized
+                dosing schedule. This takes about a minute.
               </p>
             </div>
             <button
@@ -70,13 +136,13 @@ export default function OnboardingFlow() {
           </>
         )}
 
+        {/* Step 1: Syringe size */}
         {step === 1 && (
           <>
             <div className="text-center space-y-2">
               <h2 className="text-xl font-bold">What syringe do you use?</h2>
               <p className="text-muted text-sm">
-                This helps us show your dose in units so you can draw up
-                accurately.
+                This helps show your dose in syringe units.
               </p>
             </div>
 
@@ -100,12 +166,275 @@ export default function OnboardingFlow() {
             </div>
 
             <button
-              onClick={handleComplete}
-              disabled={loading}
-              className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-4 rounded-xl transition-colors disabled:opacity-50"
+              onClick={() => setStep(2)}
+              className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-4 rounded-xl transition-colors"
             >
-              {loading ? "Saving..." : "Continue"}
+              Next
             </button>
+          </>
+        )}
+
+        {/* Step 2: Body composition */}
+        {step === 2 && (
+          <>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-bold">About You</h2>
+              <p className="text-muted text-sm">
+                This helps the AI tailor dosing to your body. All fields are
+                optional.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Sex */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Sex</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["male", "female", "other"] as const).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSex(s)}
+                      className={`py-2.5 rounded-lg text-sm font-medium border transition-colors capitalize ${
+                        sex === s
+                          ? "bg-primary text-white border-primary"
+                          : "bg-surface border-border hover:bg-surface-hover"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Age */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Age</label>
+                <input
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="30"
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-foreground"
+                />
+              </div>
+
+              {/* Height & Weight side by side */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Height (cm)
+                  </label>
+                  <input
+                    type="number"
+                    value={heightCm}
+                    onChange={(e) => setHeightCm(e.target.value)}
+                    placeholder="175"
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Weight (kg)
+                  </label>
+                  <input
+                    type="number"
+                    value={weightKg}
+                    onChange={(e) => setWeightKg(e.target.value)}
+                    placeholder="80"
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-foreground"
+                  />
+                </div>
+              </div>
+
+              {/* Body fat */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Estimated Body Fat %
+                </label>
+                <input
+                  type="number"
+                  value={bodyFatPct}
+                  onChange={(e) => setBodyFatPct(e.target.value)}
+                  placeholder="15"
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-foreground"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep(1)}
+                className="flex-1 border border-border text-foreground font-semibold py-3 rounded-xl transition-colors hover:bg-surface-hover"
+              >
+                Back
+              </button>
+              <button
+                onClick={() => setStep(3)}
+                className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Step 3: Goals */}
+        {step === 3 && (
+          <>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-bold">What are your goals?</h2>
+              <p className="text-muted text-sm">
+                Select all that apply. This shapes your dosing schedule.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {GOAL_OPTIONS.map((goal) => {
+                const isSelected = goals.includes(goal.id);
+                return (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    onClick={() => toggleGoal(goal.id)}
+                    className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-colors text-left ${
+                      isSelected
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-surface hover:border-primary/40"
+                    }`}
+                  >
+                    <span className="text-lg">{goal.icon}</span>
+                    <span className="text-sm font-medium">{goal.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep(2)}
+                className="flex-1 border border-border text-foreground font-semibold py-3 rounded-xl transition-colors hover:bg-surface-hover"
+              >
+                Back
+              </button>
+              <button
+                onClick={() => setStep(4)}
+                disabled={goals.length === 0}
+                className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Step 4: Experience & Aggressiveness */}
+        {step === 4 && (
+          <>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-bold">Your Approach</h2>
+              <p className="text-muted text-sm">
+                This helps the AI dial in the right intensity for you.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Experience level */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Peptide Experience
+                </label>
+                <div className="space-y-2">
+                  {([
+                    {
+                      id: "beginner" as const,
+                      label: "Beginner",
+                      desc: "New to peptides or just getting started",
+                    },
+                    {
+                      id: "intermediate" as const,
+                      label: "Intermediate",
+                      desc: "Used peptides before, familiar with protocols",
+                    },
+                    {
+                      id: "advanced" as const,
+                      label: "Advanced",
+                      desc: "Experienced with multiple peptide cycles",
+                    },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setExperience(opt.id)}
+                      className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${
+                        experience === opt.id
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-surface hover:border-primary/40"
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{opt.label}</div>
+                      <div className="text-xs text-muted">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Aggressiveness */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  How aggressive do you want to be?
+                </label>
+                <div className="space-y-2">
+                  {([
+                    {
+                      id: "conservative" as const,
+                      label: "Conservative",
+                      desc: "Lower doses, slower ramp-up, prioritize safety",
+                    },
+                    {
+                      id: "moderate" as const,
+                      label: "Moderate",
+                      desc: "Standard dosing protocols, balanced approach",
+                    },
+                    {
+                      id: "aggressive" as const,
+                      label: "Aggressive",
+                      desc: "Higher doses, faster results, experienced users",
+                    },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setAggressiveness(opt.id)}
+                      className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${
+                        aggressiveness === opt.id
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-surface hover:border-primary/40"
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{opt.label}</div>
+                      <div className="text-xs text-muted">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep(3)}
+                className="flex-1 border border-border text-foreground font-semibold py-3 rounded-xl transition-colors hover:bg-surface-hover"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleComplete}
+                disabled={loading}
+                className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {loading ? "Saving..." : "Finish Setup"}
+              </button>
+            </div>
           </>
         )}
       </div>

@@ -45,6 +45,20 @@ const SITE_REGIONS: SiteRegion[] = [
     ly: 155,
   },
   {
+    id: "Left love handle",
+    label: "L Love Handle",
+    path: "M48,125 L46,140 L54,148 L60,140 L60,125 Z",
+    lx: 32,
+    ly: 137,
+  },
+  {
+    id: "Right love handle",
+    label: "R Love Handle",
+    path: "M100,125 L100,140 L106,148 L114,140 L112,125 Z",
+    lx: 118,
+    ly: 137,
+  },
+  {
     id: "Left thigh",
     label: "L Thigh",
     path: "M62,168 L60,200 L72,206 L78,200 L78,168 Z",

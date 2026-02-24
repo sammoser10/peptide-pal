@@ -10,32 +10,48 @@ interface Props {
   reconstitutionVolumeMl: number | null;
 }
 
+function mcgToMg(mcg: string): string {
+  if (!mcg) return "";
+  const val = parseFloat(mcg) / 1000;
+  // Avoid floating point noise: round to 4 decimal places
+  return String(Math.round(val * 10000) / 10000);
+}
+
+function mgToMcg(mg: string): string {
+  if (!mg) return "";
+  const val = parseFloat(mg) * 1000;
+  return String(Math.round(val * 10) / 10);
+}
+
 export default function DualDoseInput({
   doseMcg,
   onDoseMcgChange,
   vialSizeMg,
   reconstitutionVolumeMl,
 }: Props) {
-  // Only used when the units field is actively being typed in
   const [localUnits, setLocalUnits] = useState<string | null>(null);
-  const [activeField, setActiveField] = useState<"mcg" | "units" | null>(null);
+  const [localMg, setLocalMg] = useState<string | null>(null);
+  const [activeField, setActiveField] = useState<"mg" | "units" | null>(null);
 
   const hasReconInfo = !!(vialSizeMg && reconstitutionVolumeMl);
 
-  // Derive units from mcg (used when user is NOT actively typing in units field)
+  // Derive display values from the canonical mcg state
+  const derivedMg = useMemo(() => mcgToMg(doseMcg), [doseMcg]);
+
   const derivedUnits = useMemo(() => {
     if (!doseMcg || !hasReconInfo) return "";
     const units = doseToUnits(parseFloat(doseMcg), vialSizeMg, reconstitutionVolumeMl);
     return units !== null ? String(units) : "";
   }, [doseMcg, vialSizeMg, reconstitutionVolumeMl, hasReconInfo]);
 
-  // Show local value when actively editing units, otherwise show derived
+  const displayedMg = activeField === "mg" && localMg !== null ? localMg : derivedMg;
   const displayedUnits = activeField === "units" && localUnits !== null ? localUnits : derivedUnits;
 
-  const handleMcgChange = useCallback(
+  const handleMgChange = useCallback(
     (value: string) => {
+      setLocalMg(value);
       setLocalUnits(null);
-      onDoseMcgChange(value);
+      onDoseMcgChange(mgToMcg(value));
     },
     [onDoseMcgChange]
   );
@@ -43,6 +59,7 @@ export default function DualDoseInput({
   const handleUnitsChange = useCallback(
     (value: string) => {
       setLocalUnits(value);
+      setLocalMg(null);
       if (!value) {
         onDoseMcgChange("");
         return;
@@ -59,25 +76,31 @@ export default function DualDoseInput({
     <div>
       <label className="block text-sm font-medium mb-2">Dose</label>
       <div className="flex items-center gap-0">
-        {/* MCG bubble */}
+        {/* MG bubble */}
         <div className="flex-1 relative">
           <input
             type="number"
             step="any"
-            value={doseMcg}
-            onChange={(e) => handleMcgChange(e.target.value)}
-            onFocus={() => setActiveField("mcg")}
-            onBlur={() => setActiveField(null)}
+            value={displayedMg}
+            onChange={(e) => handleMgChange(e.target.value)}
+            onFocus={() => {
+              setActiveField("mg");
+              setLocalMg(derivedMg);
+            }}
+            onBlur={() => {
+              setActiveField(null);
+              setLocalMg(null);
+            }}
             required
-            placeholder="250"
+            placeholder="0.25"
             className={`w-full border rounded-l-xl rounded-r-none px-3 py-3 text-foreground text-center font-medium transition-colors ${
-              activeField === "mcg"
+              activeField === "mg"
                 ? "bg-primary/10 border-primary ring-1 ring-primary"
                 : "bg-surface border-border"
             }`}
           />
           <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-muted font-medium uppercase tracking-wide">
-            mcg
+            mg
           </span>
         </div>
 

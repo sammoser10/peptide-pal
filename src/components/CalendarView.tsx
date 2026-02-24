@@ -3,13 +3,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { formatDose } from "@/lib/units";
-import type { InjectionWithPeptide } from "@/lib/database.types";
+import type {
+  InjectionWithPeptide,
+  ScheduleEntryWithPeptide,
+} from "@/lib/database.types";
 
 interface CalendarViewProps {
   refreshKey: number;
 }
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const TIME_LABELS: Record<string, string> = {
+  morning: "Morning",
+  afternoon: "Afternoon",
+  evening: "Evening",
+};
 
 function getMonthDays(year: number, month: number) {
   const firstDay = new Date(year, month, 1).getDay();
@@ -28,28 +37,38 @@ function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function mcgToMg(mcg: number): string {
+  return String(Math.round((mcg / 1000) * 10000) / 10000);
+}
+
 export default function CalendarView({ refreshKey }: CalendarViewProps) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [injections, setInjections] = useState<InjectionWithPeptide[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleEntryWithPeptide[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  const loadInjections = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiFetch("/api/injections?limit=200");
-      const data = await res.json();
-      if (Array.isArray(data)) setInjections(data);
+      const [injRes, schedRes] = await Promise.all([
+        apiFetch("/api/injections?limit=200"),
+        apiFetch("/api/schedule"),
+      ]);
+      const injData = await injRes.json();
+      const schedData = await schedRes.json();
+      if (Array.isArray(injData)) setInjections(injData);
+      if (Array.isArray(schedData)) setSchedule(schedData);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadInjections();
-  }, [refreshKey, loadInjections]);
+    loadData();
+  }, [refreshKey, loadData]);
 
   // Group injections by date key
   const injectionsByDate: Record<string, InjectionWithPeptide[]> = {};
@@ -59,10 +78,22 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
     injectionsByDate[key].push(inj);
   }
 
+  // Get scheduled entries for a given date based on day_of_week
+  function getScheduledForDate(dateKey: string): ScheduleEntryWithPeptide[] {
+    const d = new Date(dateKey + "T12:00:00");
+    const dow = d.getDay();
+    return schedule.filter((s) => s.day_of_week === dow);
+  }
+
   // Get unique peptide names for color assignment
-  const peptideNames = Array.from(
-    new Set(injections.map((inj) => inj.peptides?.name || "Unknown"))
-  );
+  const allPeptideNames = new Set<string>();
+  for (const inj of injections) {
+    allPeptideNames.add(inj.peptides?.name || "Unknown");
+  }
+  for (const s of schedule) {
+    allPeptideNames.add(s.peptides?.name || "Unknown");
+  }
+  const peptideNames = Array.from(allPeptideNames);
 
   const DOT_COLORS = [
     "bg-primary",
@@ -113,6 +144,9 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
 
   const selectedInjections = selectedDate
     ? injectionsByDate[selectedDate] || []
+    : [];
+  const selectedScheduled = selectedDate
+    ? getScheduledForDate(selectedDate)
     : [];
 
   return (
@@ -187,15 +221,27 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
             }
             const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const dayInjections = injectionsByDate[dateKey] || [];
+            const dayScheduled = getScheduledForDate(dateKey);
             const isToday = dateKey === todayKey;
             const isSelected = dateKey === selectedDate;
 
-            // Get unique peptides for this day's dots
-            const uniquePeptides = Array.from(
+            // Logged peptides (solid dots)
+            const loggedPeptides = Array.from(
               new Set(
                 dayInjections.map((inj) => inj.peptides?.name || "Unknown")
               )
             );
+            // Scheduled but not yet logged (hollow dots)
+            const loggedNames = new Set(loggedPeptides);
+            const scheduledOnly = Array.from(
+              new Set(
+                dayScheduled
+                  .map((s) => s.peptides?.name || "Unknown")
+                  .filter((n) => !loggedNames.has(n))
+              )
+            );
+
+            const totalDots = loggedPeptides.length + scheduledOnly.length;
 
             return (
               <button
@@ -212,9 +258,9 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
                 }`}
               >
                 <span className="text-sm">{day}</span>
-                {uniquePeptides.length > 0 && (
+                {totalDots > 0 && (
                   <div className="flex gap-0.5 mt-0.5">
-                    {uniquePeptides.slice(0, 3).map((name) => (
+                    {loggedPeptides.slice(0, 3).map((name) => (
                       <span
                         key={name}
                         className={`w-1.5 h-1.5 rounded-full ${
@@ -222,7 +268,19 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
                         }`}
                       />
                     ))}
-                    {uniquePeptides.length > 3 && (
+                    {scheduledOnly
+                      .slice(0, Math.max(0, 3 - loggedPeptides.length))
+                      .map((name) => (
+                        <span
+                          key={`s-${name}`}
+                          className={`w-1.5 h-1.5 rounded-full border ${
+                            isSelected
+                              ? "border-white/60 bg-transparent"
+                              : "border-primary/40 bg-transparent"
+                          }`}
+                        />
+                      ))}
+                    {totalDots > 3 && (
                       <span
                         className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-white/40" : "bg-muted"}`}
                       />
@@ -246,6 +304,12 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
               {name}
             </div>
           ))}
+          {schedule.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full border-2 border-primary/40" />
+              Scheduled
+            </div>
+          )}
         </div>
       )}
 
@@ -260,43 +324,97 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
               year: "numeric",
             })}
           </h3>
-          {selectedInjections.length === 0 ? (
-            <p className="text-sm text-muted">No injections on this day.</p>
-          ) : (
-            <div className="space-y-2">
-              {selectedInjections.map((inj) => (
-                <div
-                  key={inj.id}
-                  className="flex items-center gap-3 text-sm"
-                >
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${getPeptideColor(inj.peptides?.name || "Unknown")}`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium">
-                      {inj.peptides?.name || "Unknown"}
-                    </span>
-                    <span className="text-muted ml-2">
-                      {formatDose(
-                        inj.dose_mcg,
-                        inj.peptides?.vial_size_mg,
-                        inj.peptides?.reconstitution_volume_ml
+
+          {/* Logged injections */}
+          {selectedInjections.length > 0 && (
+            <div className="mb-3">
+              <div className="text-xs font-medium text-muted uppercase tracking-wide mb-1.5">
+                Logged
+              </div>
+              <div className="space-y-2">
+                {selectedInjections.map((inj) => (
+                  <div
+                    key={inj.id}
+                    className="flex items-center gap-3 text-sm"
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${getPeptideColor(inj.peptides?.name || "Unknown")}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium">
+                        {inj.peptides?.name || "Unknown"}
+                      </span>
+                      <span className="text-muted ml-2">
+                        {formatDose(
+                          inj.dose_mcg,
+                          inj.peptides?.vial_size_mg,
+                          inj.peptides?.reconstitution_volume_ml
+                        )}
+                      </span>
+                      <span className="text-muted ml-2">
+                        {inj.injection_site}
+                      </span>
+                    </div>
+                    <span className="text-muted shrink-0">
+                      {new Date(inj.injection_time).toLocaleTimeString(
+                        "en-US",
+                        {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        }
                       )}
                     </span>
-                    <span className="text-muted ml-2">
-                      {inj.injection_site}
-                    </span>
                   </div>
-                  <span className="text-muted shrink-0">
-                    {new Date(inj.injection_time).toLocaleTimeString("en-US", {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
+
+          {/* Scheduled doses */}
+          {selectedScheduled.length > 0 && (
+            <div>
+              <div className="text-xs font-medium text-muted uppercase tracking-wide mb-1.5">
+                Scheduled
+              </div>
+              <div className="space-y-2">
+                {selectedScheduled.map((entry) => {
+                  const wasLogged = selectedInjections.some(
+                    (inj) => inj.peptide_id === entry.peptide_id
+                  );
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`flex items-center gap-3 text-sm ${wasLogged ? "opacity-50 line-through" : ""}`}
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 border-2 ${
+                          wasLogged ? "border-muted" : "border-primary"
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium">
+                          {entry.peptides?.name || "Unknown"}
+                        </span>
+                        <span className="text-muted ml-2">
+                          {mcgToMg(entry.dose_mcg)} mg
+                        </span>
+                      </div>
+                      <span className="text-muted shrink-0">
+                        {TIME_LABELS[entry.time_of_day] || entry.time_of_day}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {selectedInjections.length === 0 &&
+            selectedScheduled.length === 0 && (
+              <p className="text-sm text-muted">
+                No injections or scheduled doses on this day.
+              </p>
+            )}
         </div>
       )}
     </div>
