@@ -1,8 +1,8 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("peptides")
     .select("*")
     .order("name");
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("peptides")
     .insert({
       name,

@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(
@@ -7,7 +7,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const { error } = await supabase.from("injections").delete().eq("id", id);
+  const { error } = await getSupabase().from("injections").delete().eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

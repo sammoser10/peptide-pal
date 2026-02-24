@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 
@@ -7,8 +7,8 @@ const anthropic = new Anthropic();
 export async function GET() {
   // Fetch all peptides and recent injections
   const [peptidesResult, injectionsResult] = await Promise.all([
-    supabase.from("peptides").select("*").order("name"),
-    supabase
+    getSupabase().from("peptides").select("*").order("name"),
+    getSupabase()
       .from("injections")
       .select("*, peptides(*)")
       .order("injection_time", { ascending: false })

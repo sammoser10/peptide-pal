@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "50", 10);
   const peptideId = searchParams.get("peptide_id");
 
-  let query = supabase
+  let query = getSupabase()
     .from("injections")
     .select("*, peptides(*)")
     .order("injection_time", { ascending: false })
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from("injections")
     .insert({
       peptide_id,
