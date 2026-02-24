@@ -27,19 +27,23 @@ export async function POST(request: NextRequest) {
   const { supabase, userId } = auth;
   const body = await request.json();
 
-  const { syringe_size_ml, onboarding_completed } = body;
+  const { syringe_size_ml, onboarding_completed, preferences } = body;
+
+  // Build upsert payload - only include fields that are provided
+  const upsertPayload: Record<string, unknown> = {
+    user_id: userId,
+    syringe_size_ml: syringe_size_ml ?? 0.5,
+    onboarding_completed: onboarding_completed ?? false,
+  };
+
+  if (preferences !== undefined) {
+    upsertPayload.preferences = preferences;
+  }
 
   // Upsert profile
   const { data, error } = await supabase
     .from("user_profiles")
-    .upsert(
-      {
-        user_id: userId,
-        syringe_size_ml: syringe_size_ml ?? 0.5,
-        onboarding_completed: onboarding_completed ?? false,
-      },
-      { onConflict: "user_id" }
-    )
+    .upsert(upsertPayload, { onConflict: "user_id" })
     .select()
     .single();
 
