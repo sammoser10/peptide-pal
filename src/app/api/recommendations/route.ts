@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const peptides = peptidesResult.data;
+  // Filter out archived peptides
+  const peptides = peptidesResult.data.filter((p: { archived?: boolean }) => !p.archived);
   const injections = injectionsResult.data;
   const profile = profileResult.data;
   const preferences = profile?.preferences;
@@ -128,12 +129,14 @@ Important:
 - Adjust doses based on user's experience and aggressiveness preference
 - Consider the user's goals when prioritizing timing
 - Spread injections across the week for consistency
-- Include site rotation tips`;
+- Keep each schedule entry "notes" field SHORT (under 20 words) — just the key info
+- Keep "summary" concise (2-3 sentences max)
+- Keep "tips" to 3-4 short tips max`;
 
   try {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 2048,
+      max_tokens: 8192,
       system:
         "You are a peptide regimen scheduling assistant. You create structured weekly dosing schedules based on the user's peptide stack, body composition, goals, and preferences. Always respond with valid JSON only. Be practical and evidence-informed. Always note that users should follow their healthcare provider's guidance.",
       messages: [{ role: "user", content: userPrompt }],

@@ -11,7 +11,7 @@ import PeptideManager from "@/components/PeptideManager";
 import ScheduleView from "@/components/ScheduleView";
 import AIAssistant from "@/components/AIAssistant";
 
-type Tab = "log" | "history" | "calendar" | "schedule" | "protocol";
+type Tab = "log" | "history" | "calendar" | "schedule" | "protocol" | "ai";
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   {
@@ -70,13 +70,24 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
       </svg>
     ),
   },
+  {
+    id: "ai",
+    label: "AI",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        <path d="M8 10h.01" />
+        <path d="M12 10h.01" />
+        <path d="M16 10h.01" />
+      </svg>
+    ),
+  },
 ];
 
 export default function Home() {
   const { user, profile, loading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("log");
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showAssistant, setShowAssistant] = useState(false);
 
   if (loading) {
     return (
@@ -109,6 +120,7 @@ export default function Home() {
     calendar: "Calendar",
     schedule: "Schedule",
     protocol: "Current Protocol",
+    ai: "AI Assistant",
   };
 
   return (
@@ -154,29 +166,11 @@ export default function Home() {
         {activeTab === "protocol" && (
           <PeptideManager />
         )}
+
+        {activeTab === "ai" && (
+          <AIAssistant onDataChanged={handleQuickLog} />
+        )}
       </main>
-
-      {/* Floating AI Assistant button */}
-      <button
-        onClick={() => setShowAssistant(true)}
-        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full bg-primary shadow-lg shadow-primary/25 flex items-center justify-center text-white active:scale-95 transition-transform"
-        aria-label="AI Assistant"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          <path d="M8 10h.01" />
-          <path d="M12 10h.01" />
-          <path d="M16 10h.01" />
-        </svg>
-      </button>
-
-      {/* AI Assistant overlay */}
-      {showAssistant && (
-        <AIAssistant
-          onClose={() => setShowAssistant(false)}
-          onDataChanged={handleQuickLog}
-        />
-      )}
 
       {/* Bottom tab bar */}
       <nav className="fixed bottom-0 left-0 right-0 bg-surface/80 backdrop-blur-xl border-t border-border/50 pb-[env(safe-area-inset-bottom)] z-30">
@@ -185,7 +179,7 @@ export default function Home() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center py-2 px-3 min-w-0 flex-1 transition-colors ${
+              className={`flex flex-col items-center py-2 px-2 min-w-0 flex-1 transition-colors ${
                 activeTab === tab.id
                   ? "text-primary"
                   : "text-muted"

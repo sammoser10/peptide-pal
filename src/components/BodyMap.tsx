@@ -29,14 +29,10 @@ const ALL_INJECTION_SITES = [
 
 export { ALL_INJECTION_SITES };
 
-function daysAgo(dateStr: string): number {
-  const d = new Date(dateStr);
-  const now = new Date();
-  return Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-}
-
 function formatLastUsed(dateStr: string): string {
-  const days = daysAgo(dateStr);
+  const days = Math.floor(
+    (Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24)
+  );
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days}d ago`;
@@ -52,12 +48,10 @@ export default function BodyMap({
 }: Props) {
   const recentMap = new Map(recentSites.map((s) => [s.site, s]));
 
-  // Filter to only available sites if specified
   const sites = availableSites
     ? ALL_INJECTION_SITES.filter((s) => availableSites.includes(s.id))
     : ALL_INJECTION_SITES;
 
-  // Group sites
   const groups = ["Upper", "Core", "Lower"];
   const grouped = groups
     .map((g) => ({
@@ -71,9 +65,9 @@ export default function BodyMap({
       <label className="block text-sm font-medium mb-2">Injection Site</label>
 
       {recommendedSite && (
-        <div className="mb-3 px-3 py-2 bg-success/8 border border-success/15 rounded-xl flex items-center gap-2">
+        <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-full bg-success/8 border border-success/15">
           <span className="w-2 h-2 rounded-full bg-success shrink-0" />
-          <span className="text-xs text-success font-medium">
+          <span className="text-[12px] text-success font-medium">
             Recommended: <span className="font-semibold">{recommendedSite}</span>
           </span>
         </div>
@@ -82,7 +76,7 @@ export default function BodyMap({
       <div className="space-y-3">
         {grouped.map((group) => (
           <div key={group.label}>
-            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">
+            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5 px-1">
               {group.label}
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -96,29 +90,25 @@ export default function BodyMap({
                     key={site.id}
                     type="button"
                     onClick={() => onSelect(site.id)}
-                    className={`relative text-left px-3 py-2.5 rounded-xl text-sm transition-all ${
+                    className={`relative px-3.5 py-3 rounded-2xl text-left transition-all ${
                       isSelected
-                        ? "bg-primary text-white shadow-sm"
+                        ? "bg-primary text-white shadow-sm shadow-primary/20"
                         : isRecommended
-                          ? "bg-success/8 border-2 border-success/25 text-foreground"
-                          : "bg-surface-hover text-foreground border-2 border-transparent"
+                          ? "bg-success/8 border border-success/20"
+                          : "bg-surface-hover border border-transparent"
                     }`}
                   >
-                    <div className="font-medium text-[13px]">{site.label}</div>
+                    <div className={`font-semibold text-[13px] ${isSelected ? "text-white" : ""}`}>
+                      {site.label}
+                    </div>
                     {recent?.lastUsed && (
-                      <div
-                        className={`text-[11px] mt-0.5 ${
-                          isSelected ? "text-white/70" : "text-muted"
-                        }`}
-                      >
+                      <div className={`text-[11px] mt-0.5 ${isSelected ? "text-white/60" : "text-muted"}`}>
                         {formatLastUsed(recent.lastUsed)}
-                        {recent.count && recent.count > 1
-                          ? ` (${recent.count}x)`
-                          : ""}
+                        {recent.count && recent.count > 1 ? ` · ${recent.count}x` : ""}
                       </div>
                     )}
                     {isRecommended && !isSelected && (
-                      <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-success" />
+                      <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-success" />
                     )}
                   </button>
                 );
@@ -129,7 +119,7 @@ export default function BodyMap({
       </div>
 
       {selected && (
-        <div className="mt-2 text-sm font-medium text-primary text-center">
+        <div className="mt-3 text-[13px] font-medium text-primary text-center">
           {selected}
         </div>
       )}

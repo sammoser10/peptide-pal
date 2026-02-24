@@ -5,7 +5,6 @@ import { apiFetch } from "@/lib/api";
 import type { AIChatMessage } from "@/lib/database.types";
 
 interface Props {
-  onClose: () => void;
   onDataChanged: () => void;
 }
 
@@ -16,7 +15,7 @@ interface ProposedAction {
   data?: Record<string, unknown>;
 }
 
-export default function AIAssistant({ onClose, onDataChanged }: Props) {
+export default function AIAssistant({ onDataChanged }: Props) {
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -91,7 +90,6 @@ export default function AIAssistant({ onClose, onDataChanged }: Props) {
         const result = await res.json();
 
         if (result.action === "regenerate_schedule") {
-          // Trigger schedule regeneration
           const recRes = await apiFetch("/api/recommendations");
           const recData = await recRes.json();
           if (recData.schedule?.length) {
@@ -188,36 +186,24 @@ export default function AIAssistant({ onClose, onDataChanged }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
-      {/* Header */}
-      <header className="bg-surface/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between shrink-0">
-        <button onClick={onClose} className="text-primary font-medium text-sm">
-          Done
-        </button>
-        <div className="text-center">
-          <h2 className="text-[15px] font-semibold">AI Assistant</h2>
-          <p className="text-[11px] text-muted">Protocol advisor</p>
-        </div>
-        <div className="w-10" />
-      </header>
-
+    <div className="flex flex-col h-full -mx-4 -my-5">
       {/* Chat messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-primary" strokeLinecap="round" strokeLinejoin="round">
+          <div className="text-center py-8">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-primary" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 <path d="M8 10h.01" />
                 <path d="M12 10h.01" />
                 <path d="M16 10h.01" />
               </svg>
             </div>
-            <h3 className="font-semibold text-lg mb-1">Protocol Assistant</h3>
+            <h3 className="font-semibold text-base mb-1">Protocol Assistant</h3>
             <p className="text-sm text-muted max-w-xs mx-auto">
-              Ask me anything about your peptides. I can adjust doses, update your schedule, and help optimize your protocol.
+              Ask me anything about your peptides. I can adjust doses, update schedules, and optimize your protocol.
             </p>
-            <div className="mt-6 space-y-2 max-w-xs mx-auto">
+            <div className="mt-5 space-y-2 max-w-xs mx-auto">
               {[
                 "I'm not feeling effects from BPC-157",
                 "Should I increase my dose?",
@@ -305,7 +291,7 @@ export default function AIAssistant({ onClose, onDataChanged }: Props) {
       {/* Input */}
       <form
         onSubmit={sendMessage}
-        className="px-4 py-3 border-t border-border/50 bg-surface/80 backdrop-blur-xl shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className="px-4 py-3 border-t border-border/50 bg-surface/80 backdrop-blur-xl shrink-0"
       >
         <div className="flex gap-2">
           <input

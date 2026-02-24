@@ -7,6 +7,7 @@ export interface Peptide {
   notes: string | null;
   vial_size_mg: number | null;
   reconstitution_volume_ml: number | null;
+  archived: boolean;
   created_at: string;
 }
 
