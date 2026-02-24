@@ -32,23 +32,6 @@
   --font-mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #000000;
-    --foreground: #F5F5F7;
-    --primary: #0A84FF;
-    --primary-light: #64D2FF;
-    --primary-dark: #0056CC;
-    --surface: #1C1C1E;
-    --surface-hover: #2C2C2E;
-    --border: #38383A;
-    --muted: #98989D;
-    --success: #30D158;
-    --warning: #FF9F0A;
-    --danger: #FF453A;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
