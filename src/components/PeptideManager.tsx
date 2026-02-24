@@ -1,0 +1,163 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import type { Peptide } from "@/lib/database.types";
+
+export default function PeptideManager() {
+  const [peptides, setPeptides] = useState<Peptide[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState("");
+  const [dose, setDose] = useState("");
+  const [frequency, setFrequency] = useState("");
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function loadPeptides() {
+    const res = await fetch("/api/peptides");
+    const data = await res.json();
+    if (Array.isArray(data)) setPeptides(data);
+  }
+
+  useEffect(() => {
+    loadPeptides();
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch("/api/peptides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          default_dose_mcg: parseFloat(dose),
+          frequency_description: frequency,
+          notes: notes || null,
+        }),
+      });
+      if (res.ok) {
+        setName("");
+        setDose("");
+        setFrequency("");
+        setNotes("");
+        setShowForm(false);
+        loadPeptides();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {peptides.length === 0 && !showForm && (
+        <p className="text-muted text-sm text-center py-4">
+          No peptides added yet. Tap the button below to add your first one.
+        </p>
+      )}
+
+      {peptides.map((p) => (
+        <div
+          key={p.id}
+          className="bg-surface border border-border rounded-xl p-4"
+        >
+          <div className="font-semibold text-lg">{p.name}</div>
+          <div className="text-sm text-muted mt-1">
+            Default dose: {p.default_dose_mcg} mcg
+          </div>
+          {p.frequency_description && (
+            <div className="text-sm text-muted">
+              Frequency: {p.frequency_description}
+            </div>
+          )}
+          {p.notes && (
+            <div className="text-sm text-muted mt-1 italic">{p.notes}</div>
+          )}
+        </div>
+      ))}
+
+      {showForm ? (
+        <form
+          onSubmit={handleSubmit}
+          className="bg-surface border border-border rounded-xl p-4 space-y-3"
+        >
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Peptide Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              placeholder="e.g. BPC-157"
+              className="w-full bg-background border border-border rounded-lg px-3 py-3 text-foreground"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Default Dose (mcg)
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={dose}
+              onChange={(e) => setDose(e.target.value)}
+              required
+              placeholder="e.g. 250"
+              className="w-full bg-background border border-border rounded-lg px-3 py-3 text-foreground"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Frequency
+            </label>
+            <input
+              type="text"
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value)}
+              placeholder="e.g. Once daily, Twice weekly"
+              className="w-full bg-background border border-border rounded-lg px-3 py-3 text-foreground"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Notes (optional)
+            </label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Any details about this peptide..."
+              className="w-full bg-background border border-border rounded-lg px-3 py-3 text-foreground resize-none"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="flex-1 bg-surface-hover text-foreground font-medium py-3 rounded-xl"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl disabled:opacity-50"
+            >
+              {loading ? "Adding..." : "Add Peptide"}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          onClick={() => setShowForm(true)}
+          className="w-full border-2 border-dashed border-border rounded-xl py-4 text-muted font-medium hover:border-primary hover:text-primary transition-colors"
+        >
+          + Add Peptide
+        </button>
+      )}
+    </div>
+  );
+}
