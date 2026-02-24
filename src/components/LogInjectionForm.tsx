@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
-import type { Peptide, InjectionWithPeptide } from "@/lib/database.types";
+import type { Peptide, InjectionWithPeptide, Blend } from "@/lib/database.types";
 import DualDoseInput from "./DualDoseInput";
 import BodyMap, { ALL_INJECTION_SITES } from "./BodyMap";
 import type { InjectionSiteInfo } from "./BodyMap";
@@ -51,6 +51,9 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
   const [error, setError] = useState("");
   const [recentInjections, setRecentInjections] = useState<InjectionWithPeptide[]>([]);
   const [preferredSites, setPreferredSites] = useState<string[] | undefined>(undefined);
+  const [blends, setBlends] = useState<Blend[]>([]);
+  const [selectedBlendId, setSelectedBlendId] = useState<string | null>(null);
+  const [blendDoses, setBlendDoses] = useState<Record<string, string>>({});
 
   useEffect(() => {
     Promise.all([
@@ -63,6 +66,9 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
       if (profileData?.preferences?.preferred_sites?.length) {
         setPreferredSites(profileData.preferences.preferred_sites);
       }
+      if (profileData?.preferences?.blends?.length) {
+        setBlends(profileData.preferences.blends);
+      }
     });
 
     // Default to current local time
@@ -74,13 +80,20 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
 
   // Auto-fill dose when peptide is selected
   useEffect(() => {
+    if (selectedBlendId) return;
     const selected = peptides.find((p) => p.id === peptideId);
     if (selected) {
       setDoseMcg(String(selected.default_dose_mcg));
     }
-  }, [peptideId, peptides]);
+  }, [peptideId, peptides, selectedBlendId]);
 
   const selectedPeptide = peptides.find((p) => p.id === peptideId);
+  const selectedBlend = blends.find((b) => b.id === selectedBlendId);
+  const blendPeptides = selectedBlend
+    ? selectedBlend.peptide_ids
+        .map((id) => peptides.find((p) => p.id === id))
+        .filter(Boolean) as Peptide[]
+    : [];
 
   // Compute recent site usage
   const recentSiteInfo = useMemo<InjectionSiteInfo[]>(() => {
@@ -114,24 +127,52 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
     setLoading(true);
 
     try {
-      const res = await apiFetch("/api/injections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          peptide_id: peptideId,
-          dose_mcg: parseFloat(doseMcg),
-          injection_site: injectionSite,
-          injection_time: new Date(injectionTime).toISOString(),
-          notes: notes || null,
-        }),
-      });
+      if (selectedBlendId && selectedBlend) {
+        // Log blend - create injection for each peptide
+        const results = await Promise.all(
+          selectedBlend.peptide_ids.map((pid) =>
+            apiFetch("/api/injections", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                peptide_id: pid,
+                dose_mcg: parseFloat(blendDoses[pid] || "0"),
+                injection_site: injectionSite,
+                injection_time: new Date(injectionTime).toISOString(),
+                notes: notes
+                  ? `${selectedBlend.name}: ${notes}`
+                  : `Logged as ${selectedBlend.name}`,
+              }),
+            })
+          )
+        );
+        const failed = results.filter((r) => !r.ok);
+        if (failed.length > 0) {
+          throw new Error(`Failed to log ${failed.length} of ${results.length} peptides`);
+        }
+      } else {
+        const res = await apiFetch("/api/injections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            peptide_id: peptideId,
+            dose_mcg: parseFloat(doseMcg),
+            injection_site: injectionSite,
+            injection_time: new Date(injectionTime).toISOString(),
+            notes: notes || null,
+          }),
+        });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to log injection");
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Failed to log injection");
+        }
       }
 
       // Reset form
+      setPeptideId("");
+      setSelectedBlendId(null);
+      setBlendDoses({});
       setDoseMcg("");
       setInjectionSite("");
       setNotes("");
@@ -165,13 +206,43 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
           <div>
             <label className="block text-sm font-medium mb-1">Peptide</label>
             <select
-              value={peptideId}
-              onChange={(e) => setPeptideId(e.target.value)}
+              value={selectedBlendId ? `blend:${selectedBlendId}` : peptideId}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.startsWith("blend:")) {
+                  const bId = val.slice(6);
+                  setSelectedBlendId(bId);
+                  setPeptideId("");
+                  setDoseMcg("");
+                  const blend = blends.find((b) => b.id === bId);
+                  if (blend) {
+                    const doses: Record<string, string> = {};
+                    for (const pid of blend.peptide_ids) {
+                      const p = peptides.find((x) => x.id === pid);
+                      if (p) doses[pid] = String(p.default_dose_mcg);
+                    }
+                    setBlendDoses(doses);
+                  }
+                } else {
+                  setSelectedBlendId(null);
+                  setBlendDoses({});
+                  setPeptideId(val);
+                }
+              }}
               required
               className="w-full bg-surface border border-border rounded-lg px-3 py-3 text-foreground"
             >
-              <option value="">Select peptide...</option>
-              {peptides.map((p) => (
+              <option value="">Select peptide{blends.length > 0 ? " or blend" : ""}...</option>
+              {blends.length > 0 && (
+                <optgroup label="Blends">
+                  {blends.map((b) => (
+                    <option key={`blend:${b.id}`} value={`blend:${b.id}`}>
+                      {b.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {peptides.filter((p) => !p.archived).map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -179,12 +250,31 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
             </select>
           </div>
 
-          <DualDoseInput
-            doseMcg={doseMcg}
-            onDoseMcgChange={setDoseMcg}
-            vialSizeMg={selectedPeptide?.vial_size_mg ?? null}
-            reconstitutionVolumeMl={selectedPeptide?.reconstitution_volume_ml ?? null}
-          />
+          {selectedBlendId && blendPeptides.length > 0 ? (
+            <div className="space-y-3">
+              <label className="block text-sm font-medium">Doses</label>
+              {blendPeptides.map((p) => (
+                <div key={p.id} className="bg-surface-hover rounded-xl p-3">
+                  <div className="text-sm font-medium mb-1.5">{p.name}</div>
+                  <DualDoseInput
+                    doseMcg={blendDoses[p.id] || ""}
+                    onDoseMcgChange={(v) =>
+                      setBlendDoses((prev) => ({ ...prev, [p.id]: v }))
+                    }
+                    vialSizeMg={p.vial_size_mg ?? null}
+                    reconstitutionVolumeMl={p.reconstitution_volume_ml ?? null}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <DualDoseInput
+              doseMcg={doseMcg}
+              onDoseMcgChange={setDoseMcg}
+              vialSizeMg={selectedPeptide?.vial_size_mg ?? null}
+              reconstitutionVolumeMl={selectedPeptide?.reconstitution_volume_ml ?? null}
+            />
+          )}
 
           <BodyMap
             selected={injectionSite}
@@ -222,10 +312,14 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
 
           <button
             type="submit"
-            disabled={loading || !peptideId || !injectionSite}
+            disabled={loading || (!peptideId && !selectedBlendId) || !injectionSite}
             className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "Logging..." : "Log Injection"}
+            {loading
+              ? "Logging..."
+              : selectedBlendId
+                ? `Log Blend (${blendPeptides.length} peptides)`
+                : "Log Injection"}
           </button>
         </>
       )}

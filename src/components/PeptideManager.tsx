@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { formatDose } from "@/lib/units";
-import type { Peptide } from "@/lib/database.types";
+import type { Peptide, Blend, UserPreferences } from "@/lib/database.types";
 import AIAddPeptide from "./AIAddPeptide";
 import AIImportExisting from "./AIImportExisting";
 
@@ -34,10 +34,26 @@ export default function PeptideManager() {
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Blend state
+  const [blends, setBlends] = useState<Blend[]>([]);
+  const [currentPrefs, setCurrentPrefs] = useState<UserPreferences | null>(null);
+  const [creatingBlend, setCreatingBlend] = useState(false);
+  const [blendName, setBlendName] = useState("");
+  const [blendPeptideIds, setBlendPeptideIds] = useState<string[]>([]);
+  const [savingBlend, setSavingBlend] = useState(false);
+
   async function loadPeptides() {
-    const res = await apiFetch("/api/peptides");
-    const data = await res.json();
-    if (Array.isArray(data)) setPeptides(data);
+    const [pepRes, profileRes] = await Promise.all([
+      apiFetch("/api/peptides"),
+      apiFetch("/api/profile"),
+    ]);
+    const pepData = await pepRes.json();
+    const profileData = await profileRes.json();
+    if (Array.isArray(pepData)) setPeptides(pepData);
+    if (profileData?.preferences) {
+      setCurrentPrefs(profileData.preferences);
+      setBlends(profileData.preferences.blends || []);
+    }
   }
 
   useEffect(() => {
@@ -102,6 +118,51 @@ export default function PeptideManager() {
       body: JSON.stringify({ archived }),
     });
     loadPeptides();
+  }
+
+  async function saveBlends(updated: Blend[]) {
+    setSavingBlend(true);
+    try {
+      const newPrefs = { ...(currentPrefs || {}), blends: updated };
+      const profileRes = await apiFetch("/api/profile");
+      const profile = await profileRes.json();
+      await apiFetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          syringe_size_ml: profile?.syringe_size_ml ?? 0.5,
+          onboarding_completed: profile?.onboarding_completed ?? true,
+          preferences: newPrefs,
+        }),
+      });
+      setCurrentPrefs(newPrefs);
+      setBlends(updated);
+    } finally {
+      setSavingBlend(false);
+    }
+  }
+
+  function handleCreateBlend() {
+    if (!blendName.trim() || blendPeptideIds.length < 2) return;
+    const newBlend: Blend = {
+      id: crypto.randomUUID(),
+      name: blendName.trim(),
+      peptide_ids: blendPeptideIds,
+    };
+    saveBlends([...blends, newBlend]);
+    setBlendName("");
+    setBlendPeptideIds([]);
+    setCreatingBlend(false);
+  }
+
+  function handleDeleteBlend(id: string) {
+    saveBlends(blends.filter((b) => b.id !== id));
+  }
+
+  function toggleBlendPeptide(id: string) {
+    setBlendPeptideIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -313,6 +374,117 @@ export default function PeptideManager() {
       )}
 
       {activePeptides.map(renderPeptideCard)}
+
+      {/* Blends section */}
+      {(blends.length > 0 || activePeptides.length >= 2) && (
+        <div className="pt-1">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h3 className="font-semibold text-xs text-muted uppercase tracking-wider">
+              Blends {blends.length > 0 && `(${blends.length})`}
+            </h3>
+          </div>
+
+          {blends.map((blend) => {
+            const blendPeps = blend.peptide_ids
+              .map((id) => peptides.find((p) => p.id === id))
+              .filter(Boolean) as Peptide[];
+
+            return (
+              <div key={blend.id} className="bg-surface rounded-2xl p-4 shadow-sm mb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-[15px]">{blend.name}</div>
+                    <div className="text-sm text-muted mt-0.5">
+                      {blendPeps.map((p) => p.name).join(" + ")}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteBlend(blend.id)}
+                    disabled={savingBlend}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-muted hover:text-danger hover:bg-danger/8 transition-colors"
+                    title="Delete blend"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {creatingBlend ? (
+            <div className="bg-surface rounded-2xl p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-[15px]">Create Blend</h3>
+                <button
+                  onClick={() => { setCreatingBlend(false); setBlendName(""); setBlendPeptideIds([]); }}
+                  className="text-sm text-primary font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+              <input
+                type="text"
+                value={blendName}
+                onChange={(e) => setBlendName(e.target.value)}
+                placeholder="Blend name (e.g. Glow Blend)"
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-foreground text-sm"
+                autoFocus
+              />
+              <div>
+                <p className="text-sm font-medium mb-2">Select peptides (min 2)</p>
+                <div className="space-y-1.5">
+                  {activePeptides.map((p) => (
+                    <label
+                      key={p.id}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                        blendPeptideIds.includes(p.id)
+                          ? "bg-primary/8 border border-primary/20"
+                          : "bg-surface-hover border border-transparent"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={blendPeptideIds.includes(p.id)}
+                        onChange={() => toggleBlendPeptide(p.id)}
+                        className="sr-only"
+                      />
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                        blendPeptideIds.includes(p.id)
+                          ? "bg-primary border-primary"
+                          : "border-border"
+                      }`}>
+                        {blendPeptideIds.includes(p.id) && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium">{p.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={handleCreateBlend}
+                disabled={savingBlend || !blendName.trim() || blendPeptideIds.length < 2}
+                className="w-full bg-primary text-white font-semibold py-3 rounded-2xl disabled:opacity-50 active:scale-[0.98] transition-transform"
+              >
+                {savingBlend ? "Saving..." : "Create Blend"}
+              </button>
+            </div>
+          ) : activePeptides.length >= 2 && (
+            <button
+              onClick={() => setCreatingBlend(true)}
+              className="w-full bg-surface border-2 border-dashed border-border rounded-2xl py-3 text-muted font-medium text-sm active:scale-[0.98] transition-transform"
+            >
+              + Create Blend
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Mode selection */}
       {addMode === "choose" && (

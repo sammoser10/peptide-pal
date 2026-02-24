@@ -47,7 +47,7 @@ You MUST respond with valid JSON only (no markdown, no code fences). Use this ex
 Important:
 - All doses MUST be in micrograms (mcg). Convert from mg if needed.
 - Use reasonable defaults from common protocols when details are vague.
-- For dates, use ISO format and estimate based on the current date.
+- For dates, use ISO format and estimate based on the current date. When estimating dates from relative descriptions (e.g. "started 3 weeks ago"), default to US Eastern Time (America/New_York, UTC-5 EST / UTC-4 EDT) for the timezone offset.
 - If they mention titration/dose changes, include historical doses in recent_doses.`;
 
   try {
@@ -58,7 +58,7 @@ Important:
       messages: [
         {
           role: "user",
-          content: `Current date: ${new Date().toISOString()}\n\nHere is my current protocol:\n\n${text}`,
+          content: `Current date: ${new Date().toISOString()}\nDefault timezone for date estimation: US Eastern Time (America/New_York)\n\nHere is my current protocol:\n\n${text}`,
         },
       ],
     });

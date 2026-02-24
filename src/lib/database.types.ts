@@ -45,6 +45,7 @@ export interface UserPreferences {
   // Preferences
   preferred_injection_time?: string;
   preferred_sites?: string[];
+  blends?: Blend[];
   notes?: string;
 }
 
@@ -75,6 +76,12 @@ export interface ScheduleEntryWithPeptide extends ScheduleEntry {
 export interface AIChatMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+export interface Blend {
+  id: string;
+  name: string;
+  peptide_ids: string[];
 }
 
 export interface AIPeptideResult {
