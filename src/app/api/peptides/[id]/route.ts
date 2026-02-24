@@ -45,6 +45,33 @@ export async function PUT(
     .single();
 
   if (error) {
+    // Handle missing 'archived' column - retry without it
+    if (
+      (error.message?.includes("archived") || error.message?.includes("schema cache")) &&
+      updateFields.archived !== undefined
+    ) {
+      const { archived, ...rest } = updateFields;
+      void archived;
+      if (Object.keys(rest).length === 0) {
+        return NextResponse.json(
+          { error: "Archive feature requires running migration_005_missing_columns.sql" },
+          { status: 400 }
+        );
+      }
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("peptides")
+        .update(rest)
+        .eq("id", id)
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+      if (fallbackError) {
+        return NextResponse.json({ error: fallbackError.message }, { status: 500 });
+      }
+      return NextResponse.json(fallbackData);
+    }
+
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   return NextResponse.json(data);
