@@ -2,19 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
-import { formatDose } from "@/lib/units";
 import type { Peptide } from "@/lib/database.types";
-
-const INJECTION_SITES = [
-  "Left abdomen",
-  "Right abdomen",
-  "Left thigh",
-  "Right thigh",
-  "Left deltoid",
-  "Right deltoid",
-  "Left glute",
-  "Right glute",
-];
+import DualDoseInput from "./DualDoseInput";
+import BodyMap from "./BodyMap";
 
 interface LogInjectionFormProps {
   onSuccess: () => void;
@@ -125,49 +115,17 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Dose (mcg)</label>
-            <input
-              type="number"
-              step="any"
-              value={doseMcg}
-              onChange={(e) => setDoseMcg(e.target.value)}
-              required
-              placeholder="e.g. 250"
-              className="w-full bg-surface border border-border rounded-lg px-3 py-3 text-foreground"
-            />
-            {doseMcg && selectedPeptide?.vial_size_mg && selectedPeptide?.reconstitution_volume_ml && (
-              <div className="mt-1 text-sm text-primary">
-                {formatDose(
-                  parseFloat(doseMcg),
-                  selectedPeptide.vial_size_mg,
-                  selectedPeptide.reconstitution_volume_ml
-                )}
-              </div>
-            )}
-          </div>
+          <DualDoseInput
+            doseMcg={doseMcg}
+            onDoseMcgChange={setDoseMcg}
+            vialSizeMg={selectedPeptide?.vial_size_mg ?? null}
+            reconstitutionVolumeMl={selectedPeptide?.reconstitution_volume_ml ?? null}
+          />
 
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Injection Site
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {INJECTION_SITES.map((site) => (
-                <button
-                  key={site}
-                  type="button"
-                  onClick={() => setInjectionSite(site)}
-                  className={`px-3 py-3 rounded-lg text-sm font-medium border transition-colors ${
-                    injectionSite === site
-                      ? "bg-primary text-white border-primary"
-                      : "bg-surface border-border text-foreground hover:bg-surface-hover"
-                  }`}
-                >
-                  {site}
-                </button>
-              ))}
-            </div>
-          </div>
+          <BodyMap
+            selected={injectionSite}
+            onSelect={setInjectionSite}
+          />
 
           <div>
             <label className="block text-sm font-medium mb-1">

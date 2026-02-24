@@ -30,6 +30,26 @@ export function doseToUnits(
 }
 
 /**
+ * Reverse calculation: convert syringe units back to micrograms.
+ */
+export function unitsToDoseMcg(
+  units: number,
+  vialSizeMg: number | null,
+  reconstitutionVolumeMl: number | null
+): number | null {
+  if (!vialSizeMg || !reconstitutionVolumeMl || vialSizeMg <= 0 || reconstitutionVolumeMl <= 0) {
+    return null;
+  }
+
+  const concentrationMgPerMl = vialSizeMg / reconstitutionVolumeMl;
+  const volumeMl = units / 100;
+  const doseMg = volumeMl * concentrationMgPerMl;
+  const doseMcg = doseMg * 1000;
+
+  return Math.round(doseMcg * 10) / 10;
+}
+
+/**
  * Format a dose for display, showing units if reconstitution info is available.
  * e.g. "10 units (500 mcg)" or just "500 mcg"
  */
