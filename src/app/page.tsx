@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import AuthScreen from "@/components/AuthScreen";
+import OnboardingFlow from "@/components/OnboardingFlow";
 import LogInjectionForm from "@/components/LogInjectionForm";
 import InjectionHistory from "@/components/InjectionHistory";
 import CalendarView from "@/components/CalendarView";
@@ -119,8 +122,28 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function Home() {
+  const { user, profile, loading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("log");
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-dvh">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  // Not logged in -> show auth screen
+  if (!user) {
+    return <AuthScreen />;
+  }
+
+  // Logged in but hasn't completed onboarding -> show onboarding
+  if (!profile?.onboarding_completed) {
+    return <OnboardingFlow />;
+  }
 
   function handleInjectionLogged() {
     setRefreshKey((k) => k + 1);
@@ -130,10 +153,33 @@ export default function Home() {
   return (
     <div className="flex flex-col h-dvh">
       {/* Header */}
-      <header className="bg-surface border-b border-border px-4 py-3">
+      <header className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between">
+        <div className="w-10" />
         <h1 className="text-xl font-bold text-center">
           <span className="text-primary">Peptide</span> Pal
         </h1>
+        <button
+          onClick={signOut}
+          className="text-muted hover:text-foreground transition-colors p-1"
+          aria-label="Sign out"
+          title="Sign out"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
       </header>
 
       {/* Content area */}

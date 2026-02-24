@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/api";
+import { formatDose } from "@/lib/units";
 import type { Peptide } from "@/lib/database.types";
 
 export default function PeptideManager() {
@@ -10,10 +12,12 @@ export default function PeptideManager() {
   const [dose, setDose] = useState("");
   const [frequency, setFrequency] = useState("");
   const [notes, setNotes] = useState("");
+  const [vialSize, setVialSize] = useState("");
+  const [reconVolume, setReconVolume] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function loadPeptides() {
-    const res = await fetch("/api/peptides");
+    const res = await apiFetch("/api/peptides");
     const data = await res.json();
     if (Array.isArray(data)) setPeptides(data);
   }
@@ -26,7 +30,7 @@ export default function PeptideManager() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch("/api/peptides", {
+      const res = await apiFetch("/api/peptides", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -34,6 +38,10 @@ export default function PeptideManager() {
           default_dose_mcg: parseFloat(dose),
           frequency_description: frequency,
           notes: notes || null,
+          vial_size_mg: vialSize ? parseFloat(vialSize) : null,
+          reconstitution_volume_ml: reconVolume
+            ? parseFloat(reconVolume)
+            : null,
         }),
       });
       if (res.ok) {
@@ -41,6 +49,8 @@ export default function PeptideManager() {
         setDose("");
         setFrequency("");
         setNotes("");
+        setVialSize("");
+        setReconVolume("");
         setShowForm(false);
         loadPeptides();
       }
@@ -64,11 +74,21 @@ export default function PeptideManager() {
         >
           <div className="font-semibold text-lg">{p.name}</div>
           <div className="text-sm text-muted mt-1">
-            Default dose: {p.default_dose_mcg} mcg
+            Default dose:{" "}
+            {formatDose(
+              p.default_dose_mcg,
+              p.vial_size_mg,
+              p.reconstitution_volume_ml
+            )}
           </div>
           {p.frequency_description && (
             <div className="text-sm text-muted">
               Frequency: {p.frequency_description}
+            </div>
+          )}
+          {p.vial_size_mg && p.reconstitution_volume_ml && (
+            <div className="text-sm text-muted">
+              Reconstitution: {p.vial_size_mg}mg vial + {p.reconstitution_volume_ml}mL water
             </div>
           )}
           {p.notes && (
@@ -110,9 +130,7 @@ export default function PeptideManager() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Frequency
-            </label>
+            <label className="block text-sm font-medium mb-1">Frequency</label>
             <input
               type="text"
               value={frequency}
@@ -121,6 +139,55 @@ export default function PeptideManager() {
               className="w-full bg-background border border-border rounded-lg px-3 py-3 text-foreground"
             />
           </div>
+
+          {/* Reconstitution section */}
+          <div className="border-t border-border pt-3 mt-3">
+            <p className="text-sm font-medium mb-2">
+              Reconstitution Info{" "}
+              <span className="text-muted font-normal">(optional)</span>
+            </p>
+            <p className="text-xs text-muted mb-3">
+              Add this to see your dose in syringe units.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium mb-1">
+                  Vial Size (mg)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={vialSize}
+                  onChange={(e) => setVialSize(e.target.value)}
+                  placeholder="e.g. 10"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-3 text-foreground"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">
+                  Water Added (mL)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  value={reconVolume}
+                  onChange={(e) => setReconVolume(e.target.value)}
+                  placeholder="e.g. 2"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-3 text-foreground"
+                />
+              </div>
+            </div>
+            {vialSize && reconVolume && dose && (
+              <div className="mt-2 p-2 bg-primary/10 rounded-lg text-sm text-primary">
+                {formatDose(
+                  parseFloat(dose),
+                  parseFloat(vialSize),
+                  parseFloat(reconVolume)
+                )}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">
               Notes (optional)

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { apiFetch } from "@/lib/api";
+import { formatDose } from "@/lib/units";
 import type { InjectionWithPeptide } from "@/lib/database.types";
 
 interface CalendarViewProps {
@@ -37,7 +39,7 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
   const loadInjections = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/injections?limit=200");
+      const res = await apiFetch("/api/injections?limit=200");
       const data = await res.json();
       if (Array.isArray(data)) setInjections(data);
     } finally {
@@ -275,7 +277,11 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
                       {inj.peptides?.name || "Unknown"}
                     </span>
                     <span className="text-muted ml-2">
-                      {inj.dose_mcg} mcg
+                      {formatDose(
+                        inj.dose_mcg,
+                        inj.peptides?.vial_size_mg,
+                        inj.peptides?.reconstitution_volume_ml
+                      )}
                     </span>
                     <span className="text-muted ml-2">
                       {inj.injection_site}

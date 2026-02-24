@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/api";
+import { formatDose } from "@/lib/units";
 import type { Peptide } from "@/lib/database.types";
 
 const INJECTION_SITES = [
@@ -29,7 +31,7 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/peptides")
+    apiFetch("/api/peptides")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setPeptides(data);
@@ -50,13 +52,15 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
     }
   }, [peptideId, peptides]);
 
+  const selectedPeptide = peptides.find((p) => p.id === peptideId);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/injections", {
+      const res = await apiFetch("/api/injections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -132,6 +136,15 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
               placeholder="e.g. 250"
               className="w-full bg-surface border border-border rounded-lg px-3 py-3 text-foreground"
             />
+            {doseMcg && selectedPeptide?.vial_size_mg && selectedPeptide?.reconstitution_volume_ml && (
+              <div className="mt-1 text-sm text-primary">
+                {formatDose(
+                  parseFloat(doseMcg),
+                  selectedPeptide.vial_size_mg,
+                  selectedPeptide.reconstitution_volume_ml
+                )}
+              </div>
+            )}
           </div>
 
           <div>

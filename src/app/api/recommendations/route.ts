@@ -1,16 +1,26 @@
-import { supabase } from "@/lib/supabase";
+import { getAuthContext, unauthorizedResponse } from "@/lib/supabase-server";
 import Anthropic from "@anthropic-ai/sdk";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const anthropic = new Anthropic();
 
-export async function GET() {
-  // Fetch all peptides and recent injections
+export async function GET(request: NextRequest) {
+  const auth = await getAuthContext(request);
+  if (!auth) return unauthorizedResponse();
+
+  const { supabase, userId } = auth;
+
+  // Fetch all peptides and recent injections for this user
   const [peptidesResult, injectionsResult] = await Promise.all([
-    supabase.from("peptides").select("*").order("name"),
+    supabase
+      .from("peptides")
+      .select("*")
+      .eq("user_id", userId)
+      .order("name"),
     supabase
       .from("injections")
       .select("*, peptides(*)")
+      .eq("user_id", userId)
       .order("injection_time", { ascending: false })
       .limit(100),
   ]);
@@ -79,7 +89,8 @@ Keep the response concise and actionable. Use simple language.`;
     });
 
     const textBlock = response.content.find((block) => block.type === "text");
-    const recommendation = textBlock?.text ?? "Unable to generate recommendation.";
+    const recommendation =
+      textBlock?.text ?? "Unable to generate recommendation.";
 
     return NextResponse.json({ recommendation });
   } catch (error) {

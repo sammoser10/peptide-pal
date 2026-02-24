@@ -1,7 +1,11 @@
-import { supabase } from "@/lib/supabase";
+import { getAuthContext, unauthorizedResponse } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
+  const auth = await getAuthContext(request);
+  if (!auth) return unauthorizedResponse();
+
+  const { supabase, userId } = auth;
   const { searchParams } = new URL(request.url);
   const limit = parseInt(searchParams.get("limit") || "50", 10);
   const peptideId = searchParams.get("peptide_id");
@@ -9,6 +13,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("injections")
     .select("*, peptides(*)")
+    .eq("user_id", userId)
     .order("injection_time", { ascending: false })
     .limit(limit);
 
@@ -25,6 +30,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await getAuthContext(request);
+  if (!auth) return unauthorizedResponse();
+
+  const { supabase, userId } = auth;
   const body = await request.json();
   const { peptide_id, dose_mcg, injection_site, injection_time, notes } = body;
 
@@ -38,6 +47,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from("injections")
     .insert({
+      user_id: userId,
       peptide_id,
       dose_mcg,
       injection_site,

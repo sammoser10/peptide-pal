@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { apiFetch } from "@/lib/api";
+import { formatDose } from "@/lib/units";
 import type { InjectionWithPeptide } from "@/lib/database.types";
 
 interface InjectionHistoryProps {
@@ -14,7 +16,7 @@ export default function InjectionHistory({ refreshKey }: InjectionHistoryProps) 
   const loadInjections = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/injections?limit=50");
+      const res = await apiFetch("/api/injections?limit=50");
       const data = await res.json();
       if (Array.isArray(data)) setInjections(data);
     } finally {
@@ -28,7 +30,7 @@ export default function InjectionHistory({ refreshKey }: InjectionHistoryProps) 
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this injection log?")) return;
-    await fetch(`/api/injections/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/injections/${id}`, { method: "DELETE" });
     loadInjections();
   }
 
@@ -80,7 +82,11 @@ export default function InjectionHistory({ refreshKey }: InjectionHistoryProps) 
                         {inj.peptides?.name || "Unknown"}
                       </span>
                       <span className="text-sm text-muted">
-                        {inj.dose_mcg} mcg
+                        {formatDose(
+                          inj.dose_mcg,
+                          inj.peptides?.vial_size_mg,
+                          inj.peptides?.reconstitution_volume_ml
+                        )}
                       </span>
                     </div>
                     <div className="text-sm text-muted mt-1">

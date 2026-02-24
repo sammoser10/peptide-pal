@@ -8,13 +8,14 @@ export async function GET(request: NextRequest) {
   const { supabase, userId } = auth;
 
   const { data, error } = await supabase
-    .from("peptides")
+    .from("user_profiles")
     .select("*")
     .eq("user_id", userId)
-    .order("name");
+    .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // Profile doesn't exist yet
+    return NextResponse.json(null);
   }
   return NextResponse.json(data);
 }
@@ -25,38 +26,25 @@ export async function POST(request: NextRequest) {
 
   const { supabase, userId } = auth;
   const body = await request.json();
-  const {
-    name,
-    default_dose_mcg,
-    frequency_description,
-    notes,
-    vial_size_mg,
-    reconstitution_volume_ml,
-  } = body;
 
-  if (!name || default_dose_mcg == null) {
-    return NextResponse.json(
-      { error: "name and default_dose_mcg are required" },
-      { status: 400 }
-    );
-  }
+  const { syringe_size_ml, onboarding_completed } = body;
 
+  // Upsert profile
   const { data, error } = await supabase
-    .from("peptides")
-    .insert({
-      user_id: userId,
-      name,
-      default_dose_mcg,
-      frequency_description: frequency_description || "",
-      notes: notes || null,
-      vial_size_mg: vial_size_mg || null,
-      reconstitution_volume_ml: reconstitution_volume_ml || null,
-    })
+    .from("user_profiles")
+    .upsert(
+      {
+        user_id: userId,
+        syringe_size_ml: syringe_size_ml ?? 0.5,
+        onboarding_completed: onboarding_completed ?? false,
+      },
+      { onConflict: "user_id" }
+    )
     .select()
     .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data, { status: 201 });
+  return NextResponse.json(data);
 }

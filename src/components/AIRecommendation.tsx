@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { apiFetch } from "@/lib/api";
 
 interface AIRecommendationProps {
   refreshKey: number;
 }
 
 export default function AIRecommendation({ refreshKey }: AIRecommendationProps) {
+  void refreshKey;
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -16,7 +18,7 @@ export default function AIRecommendation({ refreshKey }: AIRecommendationProps) 
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/recommendations");
+      const res = await apiFetch("/api/recommendations");
       const data = await res.json();
       if (data.error) {
         setError(data.error);
