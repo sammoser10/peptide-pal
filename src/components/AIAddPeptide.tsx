@@ -194,7 +194,7 @@ export default function AIAddPeptide({ onComplete, onCancel }: Props) {
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
         {/* Header */}
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="font-semibold text-base">Add with AI</h3>
+          <h3 className="font-semibold text-[15px]">Add New with AI</h3>
           <button
             onClick={onCancel}
             className="text-muted hover:text-foreground p-1"
