@@ -13,6 +13,8 @@
   --success: #34C759;
   --warning: #FF9500;
   --danger: #FF3B30;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @theme inline {
@@ -32,12 +34,19 @@
   --font-mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+html {
+  /* Fill the notch area with background color */
+  background: var(--background);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent overscroll bounce showing white */
+  overscroll-behavior: none;
 }
 
 /* Ensure touch targets are at least 44px */
@@ -50,7 +59,7 @@ input, select, textarea {
   font-size: 16px;
 }
 
-/* Apple-style scrollbar */
+/* Apple-style scrollbar - hidden but functional */
 ::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -59,4 +68,31 @@ input, select, textarea {
 /* Smooth transitions globally */
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Standalone PWA: prevent rubber-banding */
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+/* Fade-in animation for success toasts etc */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Slide-up animation for sheets/modals */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
 }

@@ -10,6 +10,7 @@ import CalendarView from "@/components/CalendarView";
 import PeptideManager from "@/components/PeptideManager";
 import ScheduleView from "@/components/ScheduleView";
 import AIAssistant from "@/components/AIAssistant";
+import SettingsView from "@/components/SettingsView";
 
 type Tab = "log" | "history" | "calendar" | "schedule" | "protocol" | "ai";
 
@@ -87,6 +88,7 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
 export default function Home() {
   const { user, profile, loading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("log");
+  const [showSettings, setShowSettings] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   if (loading) {
@@ -124,73 +126,97 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-dvh bg-background">
+    <div className="flex flex-col h-dvh bg-background overflow-hidden">
       {/* Header */}
-      <header className="bg-surface/80 backdrop-blur-xl border-b border-border/50 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
-        <div className="w-10" />
+      <header className="bg-surface/80 backdrop-blur-xl border-b border-border/50 px-4 pb-3 flex items-center justify-between shrink-0 z-30" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
+        {showSettings ? (
+          <button
+            onClick={() => setShowSettings(false)}
+            className="text-primary text-[15px] font-medium w-16 text-left"
+          >
+            Done
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowSettings(true)}
+            className="text-muted active:text-foreground transition-colors p-1 w-10"
+            aria-label="Settings"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+        )}
         <h1 className="text-[17px] font-semibold tracking-tight">
-          {pageTitle[activeTab]}
+          {showSettings ? "Settings" : pageTitle[activeTab]}
         </h1>
-        <button
-          onClick={signOut}
-          className="text-primary hover:text-primary-dark transition-colors p-1"
-          aria-label="Sign out"
-          title="Sign out"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-        </button>
+        {showSettings ? (
+          <button
+            onClick={signOut}
+            className="text-danger text-[13px] font-medium w-16 text-right"
+          >
+            Sign Out
+          </button>
+        ) : (
+          <div className="w-10" />
+        )}
       </header>
 
       {/* Content area */}
-      <main className="flex-1 overflow-y-auto px-4 py-5 pb-28">
-        {activeTab === "log" && (
-          <LogInjectionForm onSuccess={handleInjectionLogged} />
-        )}
+      <main className="flex-1 overflow-y-auto px-4 py-5">
+        {showSettings ? (
+          <SettingsView />
+        ) : (
+          <>
+            {activeTab === "log" && (
+              <LogInjectionForm onSuccess={handleInjectionLogged} />
+            )}
 
-        {activeTab === "history" && (
-          <InjectionHistory refreshKey={refreshKey} />
-        )}
+            {activeTab === "history" && (
+              <InjectionHistory refreshKey={refreshKey} />
+            )}
 
-        {activeTab === "calendar" && (
-          <CalendarView refreshKey={refreshKey} />
-        )}
+            {activeTab === "calendar" && (
+              <CalendarView refreshKey={refreshKey} />
+            )}
 
-        {activeTab === "schedule" && (
-          <ScheduleView refreshKey={refreshKey} onDoseLogged={handleQuickLog} />
-        )}
+            {activeTab === "schedule" && (
+              <ScheduleView refreshKey={refreshKey} onDoseLogged={handleQuickLog} />
+            )}
 
-        {activeTab === "protocol" && (
-          <PeptideManager />
-        )}
+            {activeTab === "protocol" && (
+              <PeptideManager />
+            )}
 
-        {activeTab === "ai" && (
-          <AIAssistant onDataChanged={handleQuickLog} />
+            {activeTab === "ai" && (
+              <AIAssistant onDataChanged={handleQuickLog} />
+            )}
+          </>
         )}
       </main>
 
       {/* Bottom tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-surface/80 backdrop-blur-xl border-t border-border/50 pb-[env(safe-area-inset-bottom)] z-30">
-        <div className="flex justify-around items-center">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center py-2 px-2 min-w-0 flex-1 transition-colors ${
-                activeTab === tab.id
-                  ? "text-primary"
-                  : "text-muted"
-              }`}
-            >
-              {tab.icon}
-              <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
+      {!showSettings && (
+        <nav className="bg-surface/80 backdrop-blur-xl border-t border-border/30 shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="flex justify-around items-center">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-col items-center py-2 px-2 min-w-0 flex-1 transition-colors ${
+                  activeTab === tab.id
+                    ? "text-primary"
+                    : "text-muted"
+                }`}
+              >
+                {tab.icon}
+                <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }
