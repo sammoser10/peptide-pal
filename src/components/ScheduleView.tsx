@@ -8,6 +8,7 @@ import type {
 } from "@/lib/database.types";
 import { ALL_INJECTION_SITES } from "./BodyMap";
 import type { InjectionSiteInfo } from "./BodyMap";
+import { formatDose } from "@/lib/units";
 
 interface ScheduleViewProps {
   refreshKey: number;
@@ -31,10 +32,6 @@ const TIME_LABELS: Record<string, string> = {
   afternoon: "Afternoon",
   evening: "Evening",
 };
-
-function mcgToMg(mcg: number): string {
-  return String(Math.round((mcg / 1000) * 10000) / 10000);
-}
 
 function getRecommendedSite(recentSites: InjectionSiteInfo[], availableSites?: string[]): string | undefined {
   const sites = availableSites
@@ -310,7 +307,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
                   {nextDose.entry.peptides?.name || "Unknown"}
                 </div>
                 <div className="text-sm text-muted">
-                  {mcgToMg(nextDose.entry.dose_mcg)} mg &middot;{" "}
+                  {formatDose(nextDose.entry.dose_mcg, nextDose.entry.peptides?.vial_size_mg ?? null, nextDose.entry.peptides?.reconstitution_volume_ml ?? null)} &middot;{" "}
                   {TIME_LABELS[nextDose.entry.time_of_day]}
                 </div>
               </div>
@@ -506,7 +503,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
                           {entry.peptides?.name || "Unknown"}
                         </span>
                         <span className="text-muted text-sm ml-1.5">
-                          {mcgToMg(entry.dose_mcg)} mg
+                          {formatDose(entry.dose_mcg, entry.peptides?.vial_size_mg ?? null, entry.peptides?.reconstitution_volume_ml ?? null)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
