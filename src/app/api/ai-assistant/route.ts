@@ -143,8 +143,14 @@ Available action types:
 2. **add_peptide** - Add a new peptide
    - data: { name, default_dose_mcg, frequency_description, notes, vial_size_mg, reconstitution_volume_ml }
 
-3. **regenerate_schedule** - Regenerate the entire dosing schedule
-   - No additional fields needed, this triggers the AI scheduler
+3. **regenerate_schedule** - Set a specific weekly dosing schedule
+   - schedule: Array of schedule entries. You MUST generate the FULL weekly schedule entries yourself. Each entry:
+     - peptide_id: UUID from the peptide list above (MUST be exact)
+     - day_of_week: 0-6 where 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+     - time_of_day: "morning", "afternoon", or "evening"
+     - dose_mcg: dose in micrograms
+     - notes: optional brief note (keep under 15 words)
+   - Include ALL entries for the entire week. This schedule replaces the current one entirely.
 
 ## Rules
 - Be conversational and concise (2-4 sentences unless more detail is requested)
@@ -154,12 +160,13 @@ Available action types:
 - When discussing doses, mention both mcg and mg for clarity
 - Reference their actual data (peptide names, current doses, history) to be specific
 - Always note that users should consult their healthcare provider for medical decisions
-- If asked about something outside peptides, stay helpful but redirect to your area of expertise`;
+- If asked about something outside peptides, stay helpful but redirect to your area of expertise
+- CRITICAL for schedules: When creating or updating a schedule, you MUST generate the full schedule entries in the action block using the user's exact peptide IDs. Honor the user's specific instructions from the conversation — do NOT leave it to a generic generator.`;
 
   try {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1024,
+      max_tokens: 4096,
       system: systemPrompt,
       messages: messages.map((m: { role: string; content: string }) => ({
         role: m.role as "user" | "assistant",
@@ -253,6 +260,48 @@ async function handleAction(supabase: any, userId: string, action: any) {
       }
 
       case "regenerate_schedule": {
+        // If AI provided schedule entries from the chat, save them directly
+        if (action.schedule && Array.isArray(action.schedule) && action.schedule.length > 0) {
+          // Delete existing schedule
+          await supabase
+            .from("dosing_schedules")
+            .delete()
+            .eq("user_id", userId);
+
+          // Insert the AI-generated entries
+          const rows = action.schedule.map((e: {
+            peptide_id: string;
+            day_of_week: number;
+            time_of_day: string;
+            dose_mcg: number;
+            notes?: string;
+          }) => ({
+            user_id: userId,
+            peptide_id: e.peptide_id,
+            day_of_week: e.day_of_week,
+            time_of_day: e.time_of_day,
+            dose_mcg: e.dose_mcg,
+            notes: e.notes || null,
+          }));
+
+          const { error } = await supabase
+            .from("dosing_schedules")
+            .insert(rows);
+
+          if (error) {
+            return NextResponse.json(
+              { error: error.message },
+              { status: 500 }
+            );
+          }
+
+          return NextResponse.json({
+            success: true,
+            action: "schedule_saved",
+          });
+        }
+
+        // Fallback: no entries provided, tell frontend to use recommendations
         return NextResponse.json({
           success: true,
           action: "regenerate_schedule",

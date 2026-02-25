@@ -90,6 +90,7 @@ export default function AIAssistant({ onDataChanged }: Props) {
         const result = await res.json();
 
         if (result.action === "regenerate_schedule") {
+          // Fallback: AI didn't include schedule entries, use generic recommendations
           const recRes = await apiFetch("/api/recommendations");
           const recData = await recRes.json();
           if (recData.schedule?.length) {
@@ -100,6 +101,8 @@ export default function AIAssistant({ onDataChanged }: Props) {
             });
           }
         }
+        // If result.action === "schedule_saved", the backend already saved
+        // the AI-generated schedule entries from the chat conversation
 
         setMessages((prev) => [
           ...prev,
