@@ -255,7 +255,7 @@ export default function SettingsView() {
                 key={goal.id}
                 type="button"
                 onClick={() => toggleGoal(goal.id)}
-                className={`flex items-center gap-2 p-3 rounded-2xl transition-all text-left ${
+                className={`flex items-center gap-2 p-3 rounded-2xl select-spring text-left ${
                   isSelected
                     ? "bg-primary/10 border-2 border-primary"
                     : "bg-surface border-2 border-transparent shadow-sm"
@@ -285,7 +285,7 @@ export default function SettingsView() {
                   key={opt.id}
                   type="button"
                   onClick={() => setExperience(opt.id)}
-                  className={`w-full text-left p-3 rounded-xl transition-colors ${
+                  className={`w-full text-left p-3 rounded-xl select-spring ${
                     experience === opt.id
                       ? "bg-primary/10 border-2 border-primary"
                       : "bg-surface-hover border-2 border-transparent"
@@ -310,7 +310,7 @@ export default function SettingsView() {
                   key={opt.id}
                   type="button"
                   onClick={() => setAggressiveness(opt.id)}
-                  className={`w-full text-left p-3 rounded-xl transition-colors ${
+                  className={`w-full text-left p-3 rounded-xl select-spring ${
                     aggressiveness === opt.id
                       ? "bg-primary/10 border-2 border-primary"
                       : "bg-surface-hover border-2 border-transparent"
@@ -343,7 +343,7 @@ export default function SettingsView() {
                       key={site.id}
                       type="button"
                       onClick={() => toggleSite(site.id)}
-                      className={`px-3 py-2 rounded-xl text-sm text-left transition-all ${
+                      className={`px-3 py-2 rounded-xl text-sm text-left select-spring ${
                         isSelected
                           ? "bg-primary/10 border-2 border-primary font-medium"
                           : "bg-surface-hover border-2 border-transparent text-muted"
@@ -366,7 +366,7 @@ export default function SettingsView() {
       <button
         onClick={handleSave}
         disabled={saving || preferredSites.length < 2}
-        className="w-full bg-primary text-white font-semibold py-3.5 rounded-2xl transition-all disabled:opacity-50 active:scale-[0.98]"
+        className="w-full bg-primary text-white font-semibold py-3.5 rounded-2xl disabled:opacity-50 press-spring"
       >
         {saving ? "Saving..." : "Save Changes"}
       </button>

@@ -69,7 +69,7 @@ export default function InjectionHistory({ refreshKey }: InjectionHistoryProps) 
           <h3 className="text-sm font-semibold text-muted mb-2 sticky top-0 bg-background py-1">
             {date}
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-2 stagger-children">
             {items.map((inj) => (
               <div
                 key={inj.id}
@@ -104,7 +104,7 @@ export default function InjectionHistory({ refreshKey }: InjectionHistoryProps) 
                   </div>
                   <button
                     onClick={() => handleDelete(inj.id)}
-                    className="text-muted hover:text-danger p-2 -m-2 transition-colors"
+                    className="text-muted hover:text-danger p-2 -m-2 transition-colors press-spring"
                     aria-label="Delete injection"
                   >
                     <svg

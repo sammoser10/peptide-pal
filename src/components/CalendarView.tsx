@@ -227,7 +227,7 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
                   onClick={() =>
                     setSelectedDate(isSelected ? null : dateKey)
                   }
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm transition-all ${bubbleClass}`}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm select-spring ${bubbleClass}`}
                 >
                   {day}
                 </button>
@@ -253,7 +253,7 @@ export default function CalendarView({ refreshKey }: CalendarViewProps) {
 
       {/* Selected day detail */}
       {selectedDate && (
-        <div className="bg-surface border border-border rounded-2xl p-4">
+        <div className="bg-surface border border-border rounded-2xl p-4 animate-slide-up">
           <h3 className="font-semibold text-[15px] mb-3">
             {new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
               weekday: "long",

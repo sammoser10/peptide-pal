@@ -280,7 +280,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
     <div className="space-y-4">
       {/* Success toast */}
       {doseSuccess && (
-        <div className="bg-success/10 border border-success/20 rounded-2xl p-3 flex items-center gap-2">
+        <div className="bg-success/10 border border-success/20 rounded-2xl p-3 flex items-center gap-2 animate-scale-pop">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-success shrink-0" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
             <polyline points="22 4 12 14.01 9 11.01" />
@@ -291,7 +291,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
 
       {/* Next dose card */}
       {nextDose && (
-        <div className="bg-primary/8 rounded-2xl p-4">
+        <div className="bg-primary/8 rounded-2xl p-4 pulse-glow">
           <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
             Next Dose &middot; {nextDose.dayLabel}
           </div>
@@ -317,7 +317,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
                 setTakingDoseId(nextDose.entry.id);
                 setSelectedSite("");
               }}
-              className="bg-primary text-white text-sm font-semibold px-4 py-2 rounded-full active:scale-95 transition-transform"
+              className="bg-primary text-white text-sm font-semibold px-4 py-2 rounded-full press-spring"
             >
               Take Dose
             </button>
@@ -329,7 +329,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
       <button
         onClick={generateSchedule}
         disabled={generating}
-        className="w-full bg-primary text-white font-semibold py-3.5 rounded-2xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98]"
+        className="w-full bg-primary text-white font-semibold py-3.5 rounded-2xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 press-spring"
       >
         {generating ? (
           <>
@@ -385,7 +385,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
 
       {/* Take Dose Sheet - with site history and recommendations */}
       {takingDoseId && (
-        <div className="bg-surface rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-surface rounded-2xl shadow-sm overflow-hidden animate-slide-up">
           <div className="px-4 py-3 border-b border-border/50">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-[15px]">Select Injection Site</h3>
@@ -421,7 +421,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
                 <button
                   key={site.id}
                   onClick={() => setSelectedSite(site.id)}
-                  className={`relative text-left px-3 py-2.5 rounded-xl text-sm transition-all ${
+                  className={`relative text-left px-3 py-2.5 rounded-xl text-sm select-spring ${
                     isSelected
                       ? "bg-primary text-white font-medium"
                       : isRecommended
@@ -451,7 +451,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
                   if (entry) handleTakeDose(entry);
                 }}
                 disabled={loggingDose}
-                className="w-full bg-success text-white font-semibold py-3 rounded-2xl transition-all disabled:opacity-50 active:scale-[0.98]"
+                className="w-full bg-success text-white font-semibold py-3 rounded-2xl disabled:opacity-50 press-spring"
               >
                 {loggingDose ? "Logging..." : "Confirm & Log Dose"}
               </button>
@@ -515,7 +515,7 @@ export default function ScheduleView({ refreshKey, onDoseLogged }: ScheduleViewP
                             setTakingDoseId(entry.id);
                             setSelectedSite("");
                           }}
-                          className="text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full active:scale-95 transition-transform"
+                          className="text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-full press-spring"
                         >
                           Take
                         </button>

@@ -192,7 +192,7 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="bg-danger/10 text-danger rounded-lg p-3 text-sm">
+        <div className="bg-danger/10 text-danger rounded-2xl p-3 text-sm animate-fade-in">
           {error}
         </div>
       )}
@@ -313,7 +313,7 @@ export default function LogInjectionForm({ onSuccess }: LogInjectionFormProps) {
           <button
             type="submit"
             disabled={loading || (!peptideId && !selectedBlendId) || !injectionSite}
-            className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary text-white font-semibold py-4 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed press-spring"
           >
             {loading
               ? "Logging..."

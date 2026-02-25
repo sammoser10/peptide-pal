@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import AuthScreen from "@/components/AuthScreen";
 import OnboardingFlow from "@/components/OnboardingFlow";
@@ -90,11 +90,23 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("log");
   const [showSettings, setShowSettings] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [viewKey, setViewKey] = useState(0);
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Trigger view animation on tab change
+  useEffect(() => {
+    setViewKey((k) => k + 1);
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [activeTab, showSettings]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-dvh bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+        <div className="animate-scale-pop">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+        </div>
       </div>
     );
   }
@@ -127,19 +139,19 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-dvh bg-background overflow-hidden">
-      {/* Header */}
-      <header className="bg-surface/80 backdrop-blur-xl border-b border-border/50 px-4 pb-3 flex items-center justify-between shrink-0 z-30" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
+      {/* Header - glass effect */}
+      <header className="glass border-b border-border/40 px-4 pb-3 flex items-center justify-between shrink-0 z-30" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
         {showSettings ? (
           <button
             onClick={() => setShowSettings(false)}
-            className="text-primary text-[15px] font-medium w-16 text-left"
+            className="text-primary text-[15px] font-medium w-16 text-left press-spring"
           >
             Done
           </button>
         ) : (
           <button
             onClick={() => setShowSettings(true)}
-            className="text-muted active:text-foreground transition-colors p-1 w-10"
+            className="text-muted active:text-foreground transition-colors p-1 w-10 press-spring"
             aria-label="Settings"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -154,7 +166,7 @@ export default function Home() {
         {showSettings ? (
           <button
             onClick={signOut}
-            className="text-danger text-[13px] font-medium w-16 text-right"
+            className="text-danger text-[13px] font-medium w-16 text-right press-spring"
           >
             Sign Out
           </button>
@@ -163,57 +175,62 @@ export default function Home() {
         )}
       </header>
 
-      {/* Content area */}
-      <main className="flex-1 overflow-y-auto px-4 py-5">
-        {showSettings ? (
-          <SettingsView />
-        ) : (
-          <>
-            {activeTab === "log" && (
-              <LogInjectionForm onSuccess={handleInjectionLogged} />
-            )}
+      {/* Content area - animated view transitions */}
+      <main ref={mainRef} className="flex-1 overflow-y-auto px-4 py-5">
+        <div key={viewKey} className="animate-view-appear">
+          {showSettings ? (
+            <SettingsView />
+          ) : (
+            <>
+              {activeTab === "log" && (
+                <LogInjectionForm onSuccess={handleInjectionLogged} />
+              )}
 
-            {activeTab === "history" && (
-              <InjectionHistory refreshKey={refreshKey} />
-            )}
+              {activeTab === "history" && (
+                <InjectionHistory refreshKey={refreshKey} />
+              )}
 
-            {activeTab === "calendar" && (
-              <CalendarView refreshKey={refreshKey} />
-            )}
+              {activeTab === "calendar" && (
+                <CalendarView refreshKey={refreshKey} />
+              )}
 
-            {activeTab === "schedule" && (
-              <ScheduleView refreshKey={refreshKey} onDoseLogged={handleQuickLog} />
-            )}
+              {activeTab === "schedule" && (
+                <ScheduleView refreshKey={refreshKey} onDoseLogged={handleQuickLog} />
+              )}
 
-            {activeTab === "protocol" && (
-              <PeptideManager />
-            )}
+              {activeTab === "protocol" && (
+                <PeptideManager />
+              )}
 
-            {activeTab === "ai" && (
-              <AIAssistant onDataChanged={handleQuickLog} />
-            )}
-          </>
-        )}
+              {activeTab === "ai" && (
+                <AIAssistant onDataChanged={handleQuickLog} />
+              )}
+            </>
+          )}
+        </div>
       </main>
 
-      {/* Bottom tab bar */}
+      {/* Bottom tab bar - glass with spring tab icons */}
       {!showSettings && (
-        <nav className="bg-surface/80 backdrop-blur-xl border-t border-border/30 shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <nav className="glass border-t border-border/30 shrink-0" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
           <div className="flex justify-around items-center">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center py-2 px-2 min-w-0 flex-1 transition-colors ${
-                  activeTab === tab.id
-                    ? "text-primary"
-                    : "text-muted"
-                }`}
-              >
-                {tab.icon}
-                <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
-              </button>
-            ))}
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="flex flex-col items-center py-2 px-2 min-w-0 flex-1"
+                >
+                  <span className={`tab-transition ${isActive ? "text-primary tab-active" : "text-muted"}`}>
+                    {tab.icon}
+                  </span>
+                  <span className={`text-[10px] mt-0.5 font-medium tab-transition ${isActive ? "text-primary" : "text-muted"}`}>
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </nav>
       )}

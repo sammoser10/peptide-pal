@@ -264,7 +264,7 @@ export default function PeptideManager() {
           <button
             onClick={handleEditSave}
             disabled={editLoading || !editName || !editDose}
-            className="w-full bg-primary text-white font-semibold py-3 rounded-2xl disabled:opacity-50 active:scale-[0.98] transition-transform"
+            className="w-full bg-primary text-white font-semibold py-3 rounded-2xl disabled:opacity-50 press-spring"
           >
             {editLoading ? "Saving..." : "Save Changes"}
           </button>
@@ -341,7 +341,7 @@ export default function PeptideManager() {
 
         {/* Delete confirmation */}
         {isDeleting && (
-          <div className="mt-3 pt-3 border-t border-border/50">
+          <div className="mt-3 pt-3 border-t border-border/50 animate-expand">
             <p className="text-sm text-danger font-medium mb-2">Delete {p.name}?</p>
             <p className="text-xs text-muted mb-3">This will permanently remove this protocol. Injection history will be preserved.</p>
             <div className="flex gap-2">
@@ -470,7 +470,7 @@ export default function PeptideManager() {
               <button
                 onClick={handleCreateBlend}
                 disabled={savingBlend || !blendName.trim() || blendPeptideIds.length < 2}
-                className="w-full bg-primary text-white font-semibold py-3 rounded-2xl disabled:opacity-50 active:scale-[0.98] transition-transform"
+                className="w-full bg-primary text-white font-semibold py-3 rounded-2xl disabled:opacity-50 press-spring"
               >
                 {savingBlend ? "Saving..." : "Create Blend"}
               </button>
@@ -478,7 +478,7 @@ export default function PeptideManager() {
           ) : activePeptides.length >= 2 && (
             <button
               onClick={() => setCreatingBlend(true)}
-              className="w-full bg-surface border-2 border-dashed border-border rounded-2xl py-3 text-muted font-medium text-sm active:scale-[0.98] transition-transform"
+              className="w-full bg-surface border-2 border-dashed border-border rounded-2xl py-3 text-muted font-medium text-sm press-spring"
             >
               + Create Blend
             </button>
@@ -488,12 +488,12 @@ export default function PeptideManager() {
 
       {/* Mode selection */}
       {addMode === "choose" && (
-        <div className="bg-surface rounded-2xl p-5 shadow-sm space-y-3">
+        <div className="bg-surface rounded-2xl p-5 shadow-sm space-y-3 animate-slide-up">
           <h3 className="font-semibold text-[15px] text-center">Add to Protocol</h3>
 
           <button
             onClick={() => setAddMode("ai-new")}
-            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-primary/6 border border-primary/15 active:scale-[0.98] transition-transform text-left"
+            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-primary/6 border border-primary/15 press-spring text-left"
           >
             <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
@@ -509,7 +509,7 @@ export default function PeptideManager() {
 
           <button
             onClick={() => setAddMode("ai-existing")}
-            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-surface-hover border border-border active:scale-[0.98] transition-transform text-left"
+            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-surface-hover border border-border press-spring text-left"
           >
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
@@ -527,7 +527,7 @@ export default function PeptideManager() {
 
           <button
             onClick={() => setAddMode("manual")}
-            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-surface-hover border border-border active:scale-[0.98] transition-transform text-left"
+            className="w-full flex items-center gap-3.5 p-3.5 rounded-xl bg-surface-hover border border-border press-spring text-left"
           >
             <div className="w-10 h-10 rounded-full bg-surface-hover flex items-center justify-center shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-muted">
@@ -674,7 +674,7 @@ export default function PeptideManager() {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-primary text-white font-semibold py-3 rounded-2xl disabled:opacity-50 active:scale-[0.98] transition-transform"
+              className="flex-1 bg-primary text-white font-semibold py-3 rounded-2xl disabled:opacity-50 press-spring"
             >
               {loading ? "Adding..." : "Add Peptide"}
             </button>
@@ -686,7 +686,7 @@ export default function PeptideManager() {
       {addMode === null && (
         <button
           onClick={() => setAddMode("choose")}
-          className="w-full bg-surface border-2 border-dashed border-border rounded-2xl py-4 text-muted font-medium active:scale-[0.98] transition-transform"
+          className="w-full bg-surface border-2 border-dashed border-border rounded-2xl py-4 text-muted font-medium press-spring"
         >
           + Add to Protocol
         </button>

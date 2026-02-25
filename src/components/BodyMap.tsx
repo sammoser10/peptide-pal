@@ -90,7 +90,7 @@ export default function BodyMap({
                     key={site.id}
                     type="button"
                     onClick={() => onSelect(site.id)}
-                    className={`relative px-3.5 py-3 rounded-2xl text-left transition-all ${
+                    className={`relative px-3.5 py-3 rounded-2xl text-left select-spring ${
                       isSelected
                         ? "bg-primary text-white shadow-sm shadow-primary/20"
                         : isRecommended

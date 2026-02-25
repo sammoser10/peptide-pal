@@ -282,7 +282,7 @@ export default function AIAssistant({ onDataChanged }: Props) {
                     setInput(suggestion);
                     inputRef.current?.focus();
                   }}
-                  className="w-full text-left text-[13px] px-4 py-3 rounded-2xl bg-surface shadow-sm text-muted active:scale-[0.98] transition-transform"
+                  className="w-full text-left text-[13px] px-4 py-3 rounded-2xl bg-surface shadow-sm text-muted press-spring"
                 >
                   {suggestion}
                 </button>
@@ -326,10 +326,10 @@ export default function AIAssistant({ onDataChanged }: Props) {
               </svg>
             </div>
             <div className="bg-surface rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
-              <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 bg-muted/60 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <div className="w-1.5 h-1.5 bg-muted/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <div className="w-1.5 h-1.5 bg-muted/60 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              <div className="flex gap-1.5 items-center h-4">
+                <div className="w-1.5 h-1.5 bg-muted rounded-full typing-dot" />
+                <div className="w-1.5 h-1.5 bg-muted rounded-full typing-dot" />
+                <div className="w-1.5 h-1.5 bg-muted rounded-full typing-dot" />
               </div>
             </div>
           </div>
@@ -352,14 +352,14 @@ export default function AIAssistant({ onDataChanged }: Props) {
           <div className="flex gap-2">
             <button
               onClick={dismissAction}
-              className="flex-1 bg-surface-hover text-foreground font-medium py-3 rounded-2xl text-[14px] active:scale-[0.98] transition-transform"
+              className="flex-1 bg-surface-hover text-foreground font-medium py-3 rounded-2xl text-[14px] press-spring"
             >
               Cancel
             </button>
             <button
               onClick={executeAction}
               disabled={actionExecuting}
-              className="flex-1 bg-primary text-white font-semibold py-3 rounded-2xl text-[14px] disabled:opacity-50 active:scale-[0.98] transition-transform"
+              className="flex-1 bg-primary text-white font-semibold py-3 rounded-2xl text-[14px] disabled:opacity-50 press-spring"
             >
               {actionExecuting ? "Applying..." : getActionLabel(pendingAction)}
             </button>
@@ -385,7 +385,7 @@ export default function AIAssistant({ onDataChanged }: Props) {
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-30 active:scale-90 transition-transform shrink-0"
+            className="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-30 press-spring shrink-0"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />

@@ -15,6 +15,11 @@
   --danger: #FF3B30;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Spring easing curves */
+  --spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-soft: cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 @theme inline {
@@ -35,7 +40,6 @@
 }
 
 html {
-  /* Fill the notch area with background color */
   background: var(--background);
 }
 
@@ -45,7 +49,6 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Prevent overscroll bounce showing white */
   overscroll-behavior: none;
 }
 
@@ -77,22 +80,143 @@ input, select, textarea {
   }
 }
 
-/* Fade-in animation for success toasts etc */
+/* ========================================
+   LIQUID GLASS ANIMATION SYSTEM
+   ======================================== */
+
+/* Page / view fade-in with subtle scale */
+@keyframes viewAppear {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-view-appear {
+  animation: viewAppear 0.45s var(--spring) both;
+}
+
+/* Fade in (for toasts, banners) */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
+  from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.25s ease-out;
+  animation: fadeIn 0.35s var(--spring) both;
 }
 
-/* Slide-up animation for sheets/modals */
+/* Slide up (for sheets, action cards, chat bubbles) */
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-slide-up {
-  animation: slideUp 0.3s ease-out;
+  animation: slideUp 0.4s var(--spring) both;
+}
+
+/* Scale pop (for confirmations, badges) */
+@keyframes scalePop {
+  0% { transform: scale(0.8); opacity: 0; }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-scale-pop {
+  animation: scalePop 0.35s var(--spring-bounce) both;
+}
+
+/* Stagger children for list items */
+.stagger-children > * {
+  animation: slideUp 0.4s var(--spring) both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 450ms; }
+
+/* Glass morphism */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Interactive spring press state */
+.press-spring {
+  transition: transform 0.25s var(--spring);
+}
+.press-spring:active {
+  transform: scale(0.96);
+}
+
+/* Smooth selection toggle */
+.select-spring {
+  transition: background-color 0.3s var(--spring),
+              border-color 0.3s var(--spring),
+              color 0.2s ease,
+              box-shadow 0.3s ease,
+              transform 0.25s var(--spring);
+}
+.select-spring:active {
+  transform: scale(0.97);
+}
+
+/* Tab icon transition */
+.tab-transition {
+  transition: color 0.3s var(--spring), transform 0.3s var(--spring-bounce);
+}
+.tab-active {
+  transform: scale(1.1);
+}
+
+/* Typing indicator dots */
+@keyframes typingDot {
+  0%, 100% { transform: translateY(0); opacity: 0.35; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typing-dot {
+  animation: typingDot 1.4s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* Pulse glow for recommended/active items */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(0, 122, 255, 0.1); }
+}
+
+.pulse-glow {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+/* Smooth expand */
+@keyframes expandReveal {
+  from { opacity: 0; max-height: 0; transform: translateY(-4px); }
+  to { opacity: 1; max-height: 600px; transform: translateY(0); }
+}
+
+.animate-expand {
+  animation: expandReveal 0.4s var(--spring) both;
+  overflow: hidden;
+}
+
+/* Shimmer loading skeleton */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, var(--surface-hover) 0%, var(--surface) 50%, var(--surface-hover) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease infinite;
+  border-radius: 12px;
 }

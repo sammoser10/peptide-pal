@@ -75,7 +75,7 @@ export default function AuthScreen() {
 
         {/* Error */}
         {error && (
-          <div className="bg-danger/10 text-danger rounded-lg p-3 text-sm">
+          <div className="bg-danger/10 text-danger rounded-2xl p-3 text-sm animate-fade-in">
             {error}
           </div>
         )}
@@ -110,7 +110,7 @@ export default function AuthScreen() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-4 rounded-xl transition-colors disabled:opacity-50"
+            className="w-full bg-primary text-white font-semibold py-4 rounded-2xl disabled:opacity-50 press-spring"
           >
             {loading
               ? "Please wait..."
